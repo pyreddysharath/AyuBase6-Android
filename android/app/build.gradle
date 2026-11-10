@@ -34,7 +34,15 @@ android {
     flavorDimensions = ["store"]
     productFlavors {
         website { dimension "store" }
-        play { dimension "store" }
+        play {
+            dimension "store"
+            // Google Play numbering starts at 1 and is set by hand in play/version.properties (raised before each Play upload)
+            def pv = new Properties()
+            def pf = rootProject.file('../play/version.properties')
+            if (pf.exists()) pf.withInputStream { pv.load(it) }
+            versionCode Integer.parseInt(pv.getProperty('code', '1').trim())
+            versionName pv.getProperty('name', '1.0.0').trim()
+        }
     }
     buildTypes {
         release {

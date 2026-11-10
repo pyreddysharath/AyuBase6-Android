@@ -119,7 +119,8 @@ jobs:
           (cd android && ./gradlew assembleWebsiteRelease bundlePlayRelease --no-daemon --stacktrace)
           rm -f "$RUNNER_TEMP/release.jks"
           cp android/app/build/outputs/apk/website/release/app-website-release.apk out/AyuBase6.apk
-          mkdir -p play-out && cp android/app/build/outputs/bundle/playRelease/app-play-release.aab "play-out/AyuBase6-${VERSION_CODE}.aab"
+          PLAY_CODE=$(grep '^code=' play/version.properties | cut -d= -f2 | tr -d ' \r'); PLAY_NAME=$(grep '^name=' play/version.properties | cut -d= -f2 | tr -d ' \r')
+          mkdir -p play-out && cp android/app/build/outputs/bundle/playRelease/app-play-release.aab "play-out/AyuBase6-play-v${PLAY_NAME}-code${PLAY_CODE}.aab"
           ls -la out play-out
 
       - name: Keep the Google Play bundle with this run

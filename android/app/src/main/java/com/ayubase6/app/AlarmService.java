@@ -5,12 +5,17 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.ServiceInfo;
 import android.media.AudioAttributes;
 import android.media.MediaPlayer;
 import android.media.RingtoneManager;
+import android.media.VolumeProvider;
+import android.media.session.MediaSession;
+import android.media.session.PlaybackState;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Handler;
@@ -49,6 +54,10 @@ public class AlarmService extends Service {
     private Vibrator vibrator;
     private PowerManager.WakeLock wake;
     private Runnable autoStop;
+    private MediaSession session;          // receives the volume buttons while it rings (also without the alarm screen)
+    private BroadcastReceiver screenOff;   // the lock screen (power) button
+    private long buttonsFrom = 0;          // ignore presses in the first moment (the screen may be switching)
+    private boolean answered = false;
     String key = "", title = "", body = "";
     int count = 0;
     boolean preview = false;   // Preview notification: the real look, sound and buttons for up to 30 s; any button just closes it
@@ -78,6 +87,7 @@ public class AlarmService extends Service {
             return true;
         } catch (Exception e) {
             Log.w(ReminderScheduler.TAG, "alarm could not start", e);
+            AlarmLog.add(c, "startfail:" + key + ":" + e.getClass().getSimpleName());
             return false;
         }
     }
@@ -152,9 +162,13 @@ public class AlarmService extends Service {
                 Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q ? ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK : 0);
         } catch (Exception e) {
             Log.w(ReminderScheduler.TAG, "alarm foreground refused", e);
+            AlarmLog.add(this, "refused:" + key + ":" + e.getClass().getSimpleName());
             ReminderScheduler.show(this, "nudge-" + key, title, body, false, theme(), section(), key, ReminderScheduler.actionsFor(key));
             running = null; stopSelf(); return START_NOT_STICKY;
         }
+        if (!preview) AlarmLog.add(this, "ringing:" + key);
+        answered = false;
+        startButtons();
         if (preview) {   // the real alarm with its sound and vibration, for up to 30 seconds
             startRinging();
             if (autoStop != null) main.removeCallbacks(autoStop);
@@ -176,7 +190,41 @@ public class AlarmService extends Service {
 
     boolean canSnooze() { return count < cfg.optInt("snoozeMax", 0); }
     int snoozeMin() { return Math.max(1, cfg.optInt("snoozeMin", 5)); }
-    String keyAction() { return "stop".equals(cfg.optString("keys", "snooze")) ? "stop" : "snooze"; }
+    String keyAction() { return "snooze".equals(cfg.optString("keys", "stop")) ? "snooze" : "stop"; }     // volume buttons (default Stop)
+    String lockAction() { return "stop".equals(cfg.optString("lock", "snooze")) ? "stop" : "snooze"; }    // lock screen button (default Snooze)
+
+    /** Volume buttons and the lock screen (power) button while it rings, also for a preview and without the alarm screen. */
+    private void startButtons() {
+        stopButtons();
+        buttonsFrom = System.currentTimeMillis() + 1500;
+        try {
+            session = new MediaSession(this, "AyuBase6Alarm");
+            session.setPlaybackToRemote(new VolumeProvider(VolumeProvider.VOLUME_CONTROL_RELATIVE, 10, 5) {
+                @Override public void onAdjustVolume(int direction) { if (direction != 0) main.post(() -> pressed("volume")); }
+            });
+            session.setPlaybackState(new PlaybackState.Builder().setState(PlaybackState.STATE_PLAYING, 0, 1f).build());
+            session.setActive(true);
+        } catch (Exception e) { Log.w(ReminderScheduler.TAG, "volume buttons not available", e); }
+        try {
+            screenOff = new BroadcastReceiver() { @Override public void onReceive(Context c, Intent i) { pressed("lock"); } };
+            IntentFilter f = new IntentFilter(Intent.ACTION_SCREEN_OFF);
+            if (Build.VERSION.SDK_INT >= 33) registerReceiver(screenOff, f, Context.RECEIVER_NOT_EXPORTED); else registerReceiver(screenOff, f);
+        } catch (Exception e) { screenOff = null; }
+    }
+
+    private void stopButtons() {
+        try { if (session != null) { session.setActive(false); session.release(); } } catch (Exception ignored) {}
+        session = null;
+        try { if (screenOff != null) unregisterReceiver(screenOff); } catch (Exception ignored) {}
+        screenOff = null;
+    }
+
+    private void pressed(String which) {
+        if (answered || System.currentTimeMillis() < buttonsFrom || running != this) return;
+        answered = true;
+        String a = "lock".equals(which) ? lockAction() : keyAction();
+        if ("stop".equals(a)) stopAll(); else snooze();
+    }
 
     private Uri toneUri() {
         String tone = cfg.optString("tone", "rise");
@@ -210,6 +258,7 @@ public class AlarmService extends Service {
             PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
             if (pm != null) { wake = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "ayubase6:alarm"); wake.acquire(15 * 60000L); }
         } catch (Exception ignored) {}
+        if ("none".equals(cfg.optString("tone"))) { startVibration(); return; }   // No sound (vibrate only)
         player = new MediaPlayer();
         try {
             player.setAudioAttributes(new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM)
@@ -227,6 +276,10 @@ public class AlarmService extends Service {
                 player.setLooping(true); player.prepare(); player.start();
             } catch (Exception ignored) {}
         }
+        startVibration();
+    }
+
+    private void startVibration() {
         if (cfg != null && !cfg.optBoolean("vibrate", true)) return;   // Vibrate switch off for this alarm
         try {
             vibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);
@@ -267,7 +320,8 @@ public class AlarmService extends Service {
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setOngoing(true)
             .setAutoCancel(false)
-            .setContentIntent(full);
+            .setContentIntent(full)
+            .setDeleteIntent(action("stop", 7314));   // swiped away (Android 14+ allows it): stop the sound too
         if (!preview) b.setFullScreenIntent(full, true);
         if (canSnooze()) b.addAction(0, "Snooze " + snoozeMin() + " min", action("snooze", 7311));
         b.addAction(0, "Stop", action("stop", 7312));
@@ -292,7 +346,7 @@ public class AlarmService extends Service {
         }, "ayu-alarm-done").start();
     }
 
-    void keyPressed() { if ("stop".equals(keyAction())) stopAll(); else snooze(); }
+    void keyPressed() { if (answered) return; answered = true; if ("stop".equals(keyAction())) stopAll(); else snooze(); }
 
     /** Rang for the chosen minutes without an answer: stop ringing, leave a normal notification (Done / Not yet). */
     void missed() {
@@ -308,6 +362,7 @@ public class AlarmService extends Service {
 
     void stopAll() {
         if (autoStop != null) main.removeCallbacks(autoStop);
+        stopButtons();
         stopSound();
         NotificationManagerCompat.from(this).cancel(NOTIF_ID);
         try { ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE); } catch (Exception ignored) {}
@@ -319,6 +374,7 @@ public class AlarmService extends Service {
 
     @Override
     public void onDestroy() {
+        stopButtons();
         stopSound();
         if (running == this) running = null;
         super.onDestroy();

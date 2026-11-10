@@ -110,13 +110,18 @@ final class ReminderScheduler {
             try {
                 // A ringing alarm is due: Android's alarm-clock alarm (on time even in deep sleep and battery saving,
                 // and allowed to start ringing with the app closed); the alarm icon shows in the status bar.
-                if (canExact(c) && ringsAt(c, rules, sn, next)) {
+                boolean rings = ringsAt(c, rules, sn, next);
+                if (canExact(c) && rings) {
                     PendingIntent show = PendingIntent.getActivity(c, ALARM_REQUEST + 1, new Intent(c, MainActivity.class)
                         .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP), PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
                     am.setAlarmClock(new AlarmManager.AlarmClockInfo(ms, show), pi);
                 }
                 else if (canExact(c)) am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, ms, pi);
                 else am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, ms, pi);
+                if (rings && prefs(c).getLong("loggedNext", 0) != ms) {   // once per alarm time
+                    prefs(c).edit().putLong("loggedNext", ms).apply();
+                    AlarmLog.add(c, "set:" + ms + ":" + (canExact(c) ? "clock" : "inexact"));
+                }
             } catch (SecurityException e) {
                 am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, ms, pi);
             }
@@ -154,8 +159,11 @@ final class ReminderScheduler {
             for (Map.Entry<String, ReminderRules.Due> e : latest.entrySet()) {
                 ReminderRules.Due d = e.getValue();
                 // Checks → Alarm rings (only if it is due now, not hours late); everything else is a notification
-                boolean ring = d.key.startsWith("alarm-") && AlarmService.config(c, d.key) != null && now - dueAt.getOrDefault(d.key, 0L) <= 2;
-                if (ring && AlarmService.start(c, d.key, d.title, d.body, 0)) continue;
+                boolean isAlarm = d.key.startsWith("alarm-") && AlarmService.config(c, d.key) != null;
+                long late = now - dueAt.getOrDefault(d.key, 0L);
+                boolean ring = isAlarm && late <= 2;
+                if (isAlarm && !ring) AlarmLog.add(c, "late:" + d.key + ":" + late);
+                if (ring) { boolean ok = AlarmService.start(c, d.key, d.title, d.body, 0); AlarmLog.add(c, (ok ? "fired:" : "blocked:") + d.key); if (ok) continue; }
                 show(c, "nudge-" + d.key, d.title, d.body, false, NotificationArt.forSection(d.section), d.section, d.key, actionsFor(d.key), d.vibrate, d.sound);
                 if (!d.say.isEmpty() && NotificationManagerCompat.from(c).areNotificationsEnabled()) Speaker.say(c, d.say, d.voice, d.lang);
             }
@@ -252,9 +260,10 @@ final class ReminderScheduler {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return id;
         NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
         if (nm == null || nm.getNotificationChannel(id) != null) return id;
-        NotificationChannel ch = new NotificationChannel(id, "Checks · " + tone + (vibrate ? "" : " (no vibration)"), NotificationManager.IMPORTANCE_HIGH);
+        NotificationChannel ch = new NotificationChannel(id, ("none".equals(tone) ? "Reminders · no sound" : "Checks · " + tone) + (vibrate ? "" : " (no vibration)"), NotificationManager.IMPORTANCE_HIGH);
         ch.setDescription("Checks notifications with this sound");
-        ch.setSound(AlarmService.rawTone(c, tone), new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_NOTIFICATION)
+        if ("none".equals(tone)) ch.setSound(null, null);   // No sound (vibrate only)
+        else ch.setSound(AlarmService.rawTone(c, tone), new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_NOTIFICATION)
             .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build());
         ch.enableVibration(vibrate);
         ch.setVibrationPattern(vibrate ? new long[]{0, 200, 100, 200, 100, 200} : new long[]{0});

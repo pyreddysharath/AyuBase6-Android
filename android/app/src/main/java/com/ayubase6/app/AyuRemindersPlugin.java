@@ -217,6 +217,8 @@ public class AyuRemindersPlugin extends Plugin {
             }
         } catch (Exception ignored) {}
         r.put("manufacturer", Build.MANUFACTURER);
+        r.put("android", Build.VERSION.RELEASE);
+        try { r.put("alarmLog", AlarmLog.get(c)); r.put("nextAlarm", ReminderScheduler.nextAt(c)); } catch (Exception ignored) {}
         call.resolve(r);
     }
 
