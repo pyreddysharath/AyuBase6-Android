@@ -281,6 +281,9 @@
   // Settings → Notifications button: Android lets only its own settings page turn the permission on or off
   state.previewAlarm = function(o){ return typeof P.previewAlarm === 'function' ? P.previewAlarm(o || {}) : Promise.reject(new Error('old app')); };
   state.openNotifSettings = function(){ return P.openNotificationSettings().catch(noop); };
+  // Help's check: ringer, volumes, Do Not Disturb, channels, exact alarms, battery, a force stop when the app was last closed
+  if(typeof P.soundCheck === 'function') state.soundCheck = function(){ return P.soundCheck(); };
+  state.openBattery = function(){ return typeof P.openBatterySettings === 'function' ? P.openBatterySettings().catch(noop) : Promise.resolve(); };
   // Clock: the page's timer / stopwatch / World Clock state goes to the phone (live notifications with buttons, the timer's alarm)
   if(typeof P.clockSet === 'function' && typeof P.clockGet === 'function'){
     state.clockSet = function(o){ return P.clockSet(o || {}); };

@@ -28,6 +28,7 @@ import org.json.JSONObject;
  *   checkPermissions / requestPermissions   notifications (Android 13+ asks), plus exact-alarm state
  *   openExactAlarmSettings / openNotificationSettings / openBatterySettings
  *   getStatus()                 next alarm time and permission state
+ *   soundCheck()                ringer, volumes, Do Not Disturb, channels, exact alarms, battery, last force stop
  * Event "reminderTap" {key, section}: a notification was tapped.
  */
 @CapacitorPlugin(
@@ -160,6 +161,64 @@ public class AyuRemindersPlugin extends Plugin {
     @PluginMethod
     public void getStatus(PluginCall call) { call.resolve(status()); }
 
+    /** Help's notification check: everything on the phone that can silence a reminder or stop an alarm. */
+    @PluginMethod
+    public void soundCheck(PluginCall call) {
+        android.content.Context c = getContext();
+        JSObject r = new JSObject();
+        try {
+            android.media.AudioManager am = (android.media.AudioManager) c.getSystemService(android.content.Context.AUDIO_SERVICE);
+            if (am != null) {
+                int m = am.getRingerMode();
+                r.put("ringer", m == android.media.AudioManager.RINGER_MODE_SILENT ? "silent" : m == android.media.AudioManager.RINGER_MODE_VIBRATE ? "vibrate" : "normal");
+                r.put("notifVol", am.getStreamVolume(android.media.AudioManager.STREAM_NOTIFICATION));
+                r.put("notifMax", am.getStreamMaxVolume(android.media.AudioManager.STREAM_NOTIFICATION));
+                r.put("alarmVol", am.getStreamVolume(android.media.AudioManager.STREAM_ALARM));
+                r.put("alarmMax", am.getStreamMaxVolume(android.media.AudioManager.STREAM_ALARM));
+            }
+        } catch (Exception ignored) {}
+        try {
+            android.app.NotificationManager nm = (android.app.NotificationManager) c.getSystemService(android.content.Context.NOTIFICATION_SERVICE);
+            if (nm != null) {
+                int f = nm.getCurrentInterruptionFilter();   // 1 all, 2 priority only, 3 none, 4 alarms only
+                r.put("dnd", f == android.app.NotificationManager.INTERRUPTION_FILTER_ALL || f == android.app.NotificationManager.INTERRUPTION_FILTER_UNKNOWN ? "off"
+                    : f == android.app.NotificationManager.INTERRUPTION_FILTER_PRIORITY ? "priority" : f == android.app.NotificationManager.INTERRUPTION_FILTER_ALARMS ? "alarms" : "none");
+                if (Build.VERSION.SDK_INT >= 34) r.put("fullScreen", nm.canUseFullScreenIntent());
+                ReminderScheduler.ensureChannels(c); AlarmService.ensureChannel(c);
+                org.json.JSONArray chs = new org.json.JSONArray();
+                for (android.app.NotificationChannel ch : nm.getNotificationChannels()) {
+                    String id = ch.getId();
+                    if (!(id.equals(ReminderScheduler.CHANNEL_REMINDERS) || id.equals(ReminderScheduler.CHANNEL_REMINDERS_QUIET)
+                        || id.equals(AlarmService.CHANNEL_ALARMS) || id.startsWith(ReminderScheduler.TONE_CH))) continue;
+                    JSONObject o = new JSONObject();
+                    o.put("id", id); o.put("name", String.valueOf(ch.getName())); o.put("importance", ch.getImportance());
+                    o.put("sound", ch.getSound() != null);
+                    chs.put(o);
+                }
+                r.put("channels", chs);
+            }
+        } catch (Exception ignored) {}
+        r.put("notifications", notificationState());
+        r.put("exact", ReminderScheduler.canExact(c));
+        r.put("batteryUnrestricted", batteryUnrestricted());
+        try {
+            android.app.ActivityManager act = (android.app.ActivityManager) c.getSystemService(android.content.Context.ACTIVITY_SERVICE);
+            if (act != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) r.put("bgRestricted", act.isBackgroundRestricted());
+            if (act != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                // The last time the app was closed: was it force-stopped (that cancels its alarms)? An app update is not counted.
+                java.util.List<android.app.ApplicationExitInfo> ex = act.getHistoricalProcessExitReasons(c.getPackageName(), 0, 1);
+                if (!ex.isEmpty()) {
+                    android.app.ApplicationExitInfo e = ex.get(0);
+                    String d = String.valueOf(e.getDescription()).toLowerCase(java.util.Locale.US);
+                    if (e.getReason() == android.app.ApplicationExitInfo.REASON_USER_REQUESTED && !d.contains("install") && !d.contains("updat") && !d.contains("replac"))
+                        r.put("forceStoppedAt", e.getTimestamp());
+                }
+            }
+        } catch (Exception ignored) {}
+        r.put("manufacturer", Build.MANUFACTURER);
+        call.resolve(r);
+    }
+
     /** Background update checks: times a day (0 = off, 1–4), only between 9 AM and 9 PM. */
     @PluginMethod
     public void updateChecksGet(PluginCall call) { JSObject r = new JSObject(); r.put("times", UpdateCheck.times(getContext())); call.resolve(r); }
@@ -200,7 +259,7 @@ public class AyuRemindersPlugin extends Plugin {
         call.resolve();
     }
 
-    /** Preview of an alarm or the timer: its real notification (colours, Snooze / Stop) for about 30 seconds, without ringing. */
+    /** Preview of an alarm or the timer: its real notification (colours, Snooze / Stop), sound and vibration, for up to 30 seconds. */
     @PluginMethod
     public void previewAlarm(PluginCall call) {
         JSObject cfg = call.getObject("cfg", new JSObject());

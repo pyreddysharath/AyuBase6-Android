@@ -108,7 +108,14 @@ final class ReminderScheduler {
             long ms = next * 60000L;
             PendingIntent pi = alarmIntent(c, next);
             try {
-                if (canExact(c)) am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, ms, pi);
+                // A ringing alarm is due: Android's alarm-clock alarm (on time even in deep sleep and battery saving,
+                // and allowed to start ringing with the app closed); the alarm icon shows in the status bar.
+                if (canExact(c) && ringsAt(c, rules, sn, next)) {
+                    PendingIntent show = PendingIntent.getActivity(c, ALARM_REQUEST + 1, new Intent(c, MainActivity.class)
+                        .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP), PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+                    am.setAlarmClock(new AlarmManager.AlarmClockInfo(ms, show), pi);
+                }
+                else if (canExact(c)) am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, ms, pi);
                 else am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, ms, pi);
             } catch (SecurityException e) {
                 am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, ms, pi);
@@ -118,6 +125,19 @@ final class ReminderScheduler {
         prefs(c).edit().putLong(PREF_NEXT, nextMs).apply();
         Log.i(TAG, "next reminder at " + (next > 0 ? Instant.ofEpochMilli(nextMs).toString() : "none") + (canExact(c) ? " (exact)" : " (inexact)"));
         return nextMs;
+    }
+
+    /** Does an alarm (Checks wake-up or Reminders alarm) ring at minute t? */
+    static boolean ringsAt(Context c, JSONObject rules, org.json.JSONArray sn, long t) {
+        try {
+            if (rules != null) for (ReminderRules.Due d : ReminderRules.due(rules, local(t), t))
+                if (d.key.startsWith("alarm-") && AlarmService.config(c, d.key) != null) return true;
+            for (int i = 0; sn != null && i < sn.length(); i++) {
+                JSONObject o = sn.optJSONObject(i);
+                if (o != null && o.optLong("t") == t && o.optBoolean("alarm", false)) return true;
+            }
+        } catch (Exception ignored) {}
+        return false;
     }
 
     /** The alarm for minute `target` rang: show what is due (latest per reminder), then set the next alarm. */
@@ -163,6 +183,7 @@ final class ReminderScheduler {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
         NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
         if (nm == null) return;
+        try { for (NotificationChannel o : nm.getNotificationChannels()) if (o.getId().startsWith("tone_")) nm.deleteNotificationChannel(o.getId()); } catch (Exception ignored) {}
         if (nm.getNotificationChannel(CHANNEL_REMINDERS) == null) {
             NotificationChannel ch = new NotificationChannel(CHANNEL_REMINDERS, "Reminders", NotificationManager.IMPORTANCE_HIGH);
             ch.setDescription("Eyes, Walk, Water, Eye Exercise, Checks and My Reminders");
@@ -223,9 +244,11 @@ final class ReminderScheduler {
         show(c, tag, title, body, silent, theme, section, tapKey, actions, vibrate, "");
     }
 
-    /** A channel per app tone (Android keeps the sound per channel), with and without vibration. */
+    /** A channel per app tone (Android keeps the sound per channel), with and without vibration.
+     *  "tn2_": the sound is named, not numbered (the old "tone_" channels could point at no file after an update: no sound). */
+    static final String TONE_CH = "tn2_";
     static String toneChannel(Context c, String tone, boolean vibrate) {
-        String id = "tone_" + tone + (vibrate ? "" : "_nv");
+        String id = TONE_CH + tone + (vibrate ? "" : "_nv");
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return id;
         NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
         if (nm == null || nm.getNotificationChannel(id) != null) return id;

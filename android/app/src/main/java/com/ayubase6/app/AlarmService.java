@@ -51,7 +51,7 @@ public class AlarmService extends Service {
     private Runnable autoStop;
     String key = "", title = "", body = "";
     int count = 0;
-    boolean preview = false;   // Preview notification: the real look and buttons, no ringing; any button just closes it
+    boolean preview = false;   // Preview notification: the real look, sound and buttons for up to 30 s; any button just closes it
     JSONObject cfg = new JSONObject();
 
     // ── settings sent by the app with the rules (rules.alarms; key "alarm-<id>") ──
@@ -95,7 +95,7 @@ public class AlarmService extends Service {
         }
     }
 
-    /** Preview notification: the alarm's real notification for about 30 seconds, without sound, vibration or the full screen. */
+    /** Preview notification: the alarm's real notification, sound and vibration for up to 30 seconds, without the full screen. */
     static boolean startPreview(Context c, String key, String title, String body, JSONObject cfg) {
         Intent i = new Intent(c, AlarmService.class).setAction(A_START).putExtra(EX_PREVIEW, true)
             .putExtra(EX_KEY, key).putExtra(EX_TITLE, title).putExtra(EX_BODY, body).putExtra(EX_COUNT, 0).putExtra(EX_CFG, cfg.toString());
@@ -155,7 +155,8 @@ public class AlarmService extends Service {
             ReminderScheduler.show(this, "nudge-" + key, title, body, false, theme(), section(), key, ReminderScheduler.actionsFor(key));
             running = null; stopSelf(); return START_NOT_STICKY;
         }
-        if (preview) {
+        if (preview) {   // the real alarm with its sound and vibration, for up to 30 seconds
+            startRinging();
             if (autoStop != null) main.removeCallbacks(autoStop);
             autoStop = this::stopAll; main.postDelayed(autoStop, 30000L);
             return START_NOT_STICKY;
@@ -196,10 +197,11 @@ public class AlarmService extends Service {
 
     static File ownTone(Context c) { return new File(c.getFilesDir(), "alarm-own-tone"); }
 
+    /** The app tone by name (android.resource://<app>/raw/tone_x): a number would point at another file after an update. */
     static Uri rawTone(Context c, String id) {
-        int res = c.getResources().getIdentifier("tone_" + (id == null ? "" : id.replaceAll("[^a-z]", "")), "raw", c.getPackageName());
-        if (res == 0) res = R.raw.tone_rise;
-        return Uri.parse("android.resource://" + c.getPackageName() + "/" + res);
+        String n = "tone_" + (id == null ? "" : id.replaceAll("[^a-z]", ""));
+        if (c.getResources().getIdentifier(n, "raw", c.getPackageName()) == 0) n = "tone_rise";
+        return Uri.parse("android.resource://" + c.getPackageName() + "/raw/" + n);
     }
 
     private void startRinging() {
