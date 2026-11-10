@@ -31,4 +31,15 @@ public class MainActivity extends BridgeActivity {
         try { ReminderScheduler.cancel(this, AyuRemindersPlugin.BACK_TAG); } catch (Exception ignored) {}   // back in the app: the "Tap to return" note goes
     }
     @Override public void onPause() { AnnouncementCheck.appVisible = false; super.onPause(); }
+
+    // An alarm (or its preview) is ringing while AyuBase6 is on screen: the volume buttons snooze or stop it
+    @Override
+    public boolean dispatchKeyEvent(android.view.KeyEvent e) {
+        int k = e.getKeyCode();
+        if ((k == android.view.KeyEvent.KEYCODE_VOLUME_UP || k == android.view.KeyEvent.KEYCODE_VOLUME_DOWN) && AlarmService.current() != null) {
+            if (e.getAction() == android.view.KeyEvent.ACTION_DOWN && e.getRepeatCount() == 0) AlarmService.current().keyPressed();
+            return true;   // the press is used for the alarm, not for the volume
+        }
+        return super.dispatchKeyEvent(e);
+    }
 }

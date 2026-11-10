@@ -241,7 +241,7 @@
   function addAlarm(rules){
     var list = alarmList().map(function(a){
       return { id:String(a.id), on:true, at:+a.at, days:a.days, title:a.title, body:a.body, section:a.section === 'alerts' ? 'alerts' : 'routines',
-               tone:a.tone, ring:+a.ring||0, snoozeMin:+a.snoozeMin||5, snoozeMax:+a.snoozeMax||0, keys:a.keys === 'snooze' ? 'snooze' : 'stop', lock:a.lock === 'stop' ? 'stop' : 'snooze',
+               tone:a.tone, ring:+a.ring||0, snoozeMin:+a.snoozeMin||10, snoozeMax:+a.snoozeMax||0, keys:a.keys === 'snooze' ? 'snooze' : 'stop', lock:a.lock === 'stop' ? 'stop' : 'snooze',
                vibrate:a.vibrate !== false, once:a.once || undefined };   // once: "Only once" rings on that date only
     });
     if(!list.length) return rules;

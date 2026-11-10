@@ -56,6 +56,8 @@ public class AlarmService extends Service {
     private Runnable autoStop;
     private MediaSession session;          // receives the volume buttons while it rings (also without the alarm screen)
     private BroadcastReceiver screenOff;   // the lock screen (power) button
+    private BroadcastReceiver volChange;   // a volume button changed the alarm volume (when no screen of ours gets the key)
+    private int alarmVol = -1;
     private long buttonsFrom = 0;          // ignore presses in the first moment (the screen may be switching)
     private boolean answered = false;
     String key = "", title = "", body = "";
@@ -189,7 +191,7 @@ public class AlarmService extends Service {
     private static String str(String s) { return s == null ? "" : s; }
 
     boolean canSnooze() { return count < cfg.optInt("snoozeMax", 0); }
-    int snoozeMin() { return Math.max(1, cfg.optInt("snoozeMin", 5)); }
+    int snoozeMin() { return Math.max(1, cfg.optInt("snoozeMin", 10)); }
     String keyAction() { return "snooze".equals(cfg.optString("keys", "stop")) ? "snooze" : "stop"; }     // volume buttons (default Stop)
     String lockAction() { return "stop".equals(cfg.optString("lock", "snooze")) ? "stop" : "snooze"; }    // lock screen button (default Snooze)
 
@@ -206,6 +208,19 @@ public class AlarmService extends Service {
             session.setActive(true);
         } catch (Exception e) { Log.w(ReminderScheduler.TAG, "volume buttons not available", e); }
         try {
+            final android.media.AudioManager am = (android.media.AudioManager) getSystemService(AUDIO_SERVICE);
+            alarmVol = am != null ? am.getStreamVolume(android.media.AudioManager.STREAM_ALARM) : -1;
+            volChange = new BroadcastReceiver() { @Override public void onReceive(Context c, Intent i) {
+                if (am == null || i.getIntExtra("android.media.EXTRA_VOLUME_STREAM_TYPE", -1) != android.media.AudioManager.STREAM_ALARM) return;
+                int now = am.getStreamVolume(android.media.AudioManager.STREAM_ALARM);
+                if (alarmVol < 0 || now == alarmVol) return;
+                try { am.setStreamVolume(android.media.AudioManager.STREAM_ALARM, alarmVol, 0); } catch (Exception ignored) {}   // keep the person's alarm volume
+                pressed("volume");
+            } };
+            IntentFilter vf = new IntentFilter("android.media.VOLUME_CHANGED_ACTION");
+            if (Build.VERSION.SDK_INT >= 33) registerReceiver(volChange, vf, Context.RECEIVER_EXPORTED); else registerReceiver(volChange, vf);
+        } catch (Exception e) { volChange = null; }
+        try {
             screenOff = new BroadcastReceiver() { @Override public void onReceive(Context c, Intent i) { pressed("lock"); } };
             IntentFilter f = new IntentFilter(Intent.ACTION_SCREEN_OFF);
             if (Build.VERSION.SDK_INT >= 33) registerReceiver(screenOff, f, Context.RECEIVER_NOT_EXPORTED); else registerReceiver(screenOff, f);
@@ -217,6 +232,8 @@ public class AlarmService extends Service {
         session = null;
         try { if (screenOff != null) unregisterReceiver(screenOff); } catch (Exception ignored) {}
         screenOff = null;
+        try { if (volChange != null) unregisterReceiver(volChange); } catch (Exception ignored) {}
+        volChange = null;
     }
 
     private void pressed(String which) {
@@ -346,7 +363,7 @@ public class AlarmService extends Service {
         }, "ayu-alarm-done").start();
     }
 
-    void keyPressed() { if (answered) return; answered = true; if ("stop".equals(keyAction())) stopAll(); else snooze(); }
+    void keyPressed() { if (answered) return; answered = true; if ("stop".equals(keyAction())) stopAll(); else snooze(); }   // snooze in a preview just stops it
 
     /** Rang for the chosen minutes without an answer: stop ringing, leave a normal notification (Done / Not yet). */
     void missed() {
