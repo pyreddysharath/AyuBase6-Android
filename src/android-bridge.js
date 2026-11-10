@@ -418,12 +418,23 @@
     if(typeof P.updateDownload !== 'function'){ P.openUrl({ url:cfg.url }).catch(noop); return Promise.resolve(); }   // an app without it: the browser
     if(upd.phase === 'downloading') return Promise.resolve();
     upd.phase = 'downloading'; upd.pct = 0; upd.error = ''; updEvent();
-    return P.updateDownload({ url:String(cfg.url) }).then(function(){ upd.pct = 100; return openInstaller(); },
-      function(){ upd.phase = ''; upd.error = 'download'; updEvent(); });
+    return P.updateDownload({ url:String(cfg.url) }).then(function(){
+      upd.pct = 100;
+      // Finished while the person was in another app: Android shows "Update downloaded · Tap to install";
+      // the install screen opens when the app is on screen again.
+      if(document.hidden){ installOnReturn = true; upd.phase = ''; updEvent(); return; }
+      return openInstaller();
+    }, function(e){
+      upd.phase = ''; upd.error = /cancel/i.test(String(e && e.message || e)) ? '' : 'download'; updEvent();
+    });
   };
+  // × on the progress bar: stop the download (the part already downloaded is deleted)
+  var installOnReturn = false;
+  if(typeof P.updateCancel === 'function') state.updateCancel = function(){ return P.updateCancel().catch(noop); };
   try{ P.addListener('updateProgress', function(d){ upd.pct = Math.max(0, Math.min(100, +(d && d.pct) || 0)); updEvent(); }); }catch(e){}
   document.addEventListener('visibilitychange', function(){
     if(document.hidden) return;
+    if(installOnReturn){ installOnReturn = false; setTimeout(openInstaller, 300); }
     if(waitAllow && typeof P.updateCanInstall === 'function'){
       P.updateCanInstall().then(function(r){ if(r && r.allowed && r.ready){ waitAllow = false; openInstaller(); } }).catch(noop);
     }

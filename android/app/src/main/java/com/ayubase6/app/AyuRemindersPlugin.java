@@ -382,7 +382,8 @@ public class AyuRemindersPlugin extends Plugin {
     }
 
     // ── Update inside the app: download the new APK here, then open Android's own "Update this app?" screen ──
-    private static volatile boolean downloading = false;
+    private static volatile boolean downloading = false, cancelDownload = false;
+    static final String UPDATE_READY = "app-update-ready";
 
     private java.io.File updateFile() {
         java.io.File dir = new java.io.File(getContext().getCacheDir(), "updates");
@@ -403,7 +404,7 @@ public class AyuRemindersPlugin extends Plugin {
         String url = call.getString("url", "");
         if (!url.startsWith("https://")) { call.reject("bad url"); return; }
         if (downloading) { call.reject("busy"); return; }
-        downloading = true;
+        downloading = true; cancelDownload = false;
         new Thread(() -> {
             java.io.File out = updateFile(), part = new java.io.File(out.getPath() + ".part");
             try {
@@ -425,6 +426,7 @@ public class AyuRemindersPlugin extends Plugin {
                 try (java.io.InputStream in = c.getInputStream(); java.io.OutputStream os = new java.io.FileOutputStream(part)) {
                     byte[] buf = new byte[64 * 1024]; int n;
                     while ((n = in.read(buf)) > 0) {
+                        if (cancelDownload) throw new java.io.IOException("cancelled");
                         os.write(buf, 0, n); got += n;
                         int pct = total > 0 ? (int) (got * 100 / total) : -1;
                         if (pct != last && (pct % 5 == 0)) { last = pct; JSObject p = new JSObject(); p.put("pct", pct); notifyListeners("updateProgress", p); }
@@ -437,6 +439,9 @@ public class AyuRemindersPlugin extends Plugin {
                 if (out.exists()) out.delete();
                 if (!part.renameTo(out)) throw new java.io.IOException("rename");
                 JSObject r = new JSObject(); r.put("ok", true); r.put("versionCode", vc); r.put("versionName", pi.versionName);
+                // Finished while the app is not on screen: Android does not let it open the install screen now, so a notification asks.
+                if (!AnnouncementCheck.appVisible) ReminderScheduler.show(getContext(), UPDATE_READY, "Update downloaded", "Tap to install the new version of AyuBase6.",
+                    false, NotificationArt.REMINDERS, "update", UPDATE_READY);
                 call.resolve(r);
             } catch (Exception e) {
                 part.delete();
@@ -445,9 +450,14 @@ public class AyuRemindersPlugin extends Plugin {
         }, "ayu-update").start();
     }
 
+    /** × on the progress bar: stop the download. */
+    @PluginMethod
+    public void updateCancel(PluginCall call) { cancelDownload = true; call.resolve(); }
+
     /** Opens Android's install screen for the downloaded update; first asks to allow installing updates if needed. */
     @PluginMethod
     public void updateInstall(PluginCall call) {
+        ReminderScheduler.cancel(getContext(), UPDATE_READY);
         java.io.File f = updateFile();
         JSObject r = new JSObject();
         if (!f.exists()) { call.reject("no file"); return; }
