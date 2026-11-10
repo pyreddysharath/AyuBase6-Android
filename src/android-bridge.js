@@ -377,7 +377,8 @@
     var v = ls(UPD_KEY); if(!v) return false;
     var o = null; try{ o = JSON.parse(v); }catch(e){}
     if(!o || typeof o !== 'object'){ o = { v:String(v), at:Date.now() }; ls(UPD_KEY, JSON.stringify(o)); }   // older "Later": count from now
-    if(o.never) return true;   // Cancel: never again (App Updates in the footer still shows it)
+    if(o.closed) return String(o.v) === String(code);   // × hides it for that version only; a newer version shows it once again
+    if(o.never) return false;   // older ×: hid every version; now counts as "not yet closed"
     return String(o.v) === String(code) && Date.now() - (+o.at || 0) < LATER_MS;
   }
   state.updateChecksGet = function(){ return typeof P.updateChecksGet === 'function' ? P.updateChecksGet().then(function(r){ return +(r && r.times); }) : Promise.reject(); };
@@ -442,7 +443,7 @@
         }, 60);
       };
       card.querySelector('.ayu-ec-later').onclick = function(){
-        ls(UPD_KEY, JSON.stringify({ never:true, at:Date.now() })); card.remove();
+        ls(UPD_KEY, JSON.stringify({ closed:true, v:String(cfg.versionCode), at:Date.now() })); card.remove();
         noteBanner('You can update any time from <b>Backup &amp; Restore → App Updates</b>, in the footer.', 10000);
       };
       document.body.appendChild(card);
