@@ -283,6 +283,8 @@
   // Settings → Notifications button: Android lets only its own settings page turn the permission on or off
   state.previewAlarm = function(o){ return typeof P.previewAlarm === 'function' ? P.previewAlarm(o || {}) : Promise.reject(new Error('old app')); };
   state.openNotifSettings = function(){ return P.openNotificationSettings().catch(noop); };
+  // Settings → Disable Notifications: Android 13+ gives up the permission (the app closes); older phones open the settings page
+  if(typeof P.disableNotifications === 'function') state.disableNotifs = function(){ return P.disableNotifications(); };
   // Help's check: ringer, volumes, Do Not Disturb, channels, exact alarms, battery, a force stop when the app was last closed
   if(typeof P.soundCheck === 'function') state.soundCheck = function(){ return P.soundCheck(); };
   state.openBattery = function(){ return typeof P.openBatterySettings === 'function' ? P.openBatterySettings().catch(noop) : Promise.resolve(); };

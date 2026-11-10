@@ -352,7 +352,36 @@ public class AyuRemindersPlugin extends Plugin {
     @PluginMethod
     public void openNotificationSettings(PluginCall call) {
         Intent i = new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, getContext().getPackageName());
+        if (NotificationManagerCompat.from(getContext()).areNotificationsEnabled()) {
+            // already on: just open Android's page for AyuBase6 (its switch turns them off)
+            try { getActivity().startActivity(i); } catch (Exception e) {
+                try { getActivity().startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + getContext().getPackageName()))); } catch (Exception ignored) {}
+            }
+            call.resolve(status()); return;
+        }
         openAndReturn(call, i, () -> NotificationManagerCompat.from(getContext()).areNotificationsEnabled());
+    }
+
+    /** Settings → Disable Notifications. Android 13+: AyuBase6 gives up its notification permission (Android finishes it when the app
+     *  closes, so the app closes now). Older Android has no such permission: its notification page opens instead. */
+    @PluginMethod
+    public void disableNotifications(PluginCall call) {
+        JSObject r = new JSObject();
+        if (Build.VERSION.SDK_INT >= 33) {
+            try {
+                ReminderScheduler.saveRules(getContext(), null); ReminderScheduler.reschedule(getContext());   // nothing more is scheduled
+                getContext().revokeSelfPermissionOnKill(Manifest.permission.POST_NOTIFICATIONS);
+                r.put("closing", true); call.resolve(r);
+                main.postDelayed(() -> {
+                    try { getActivity().finishAndRemoveTask(); } catch (Exception ignored) {}
+                    main.postDelayed(() -> android.os.Process.killProcess(android.os.Process.myPid()), 600);
+                }, 400);
+                return;
+            } catch (Exception e) { /* fall back to the settings page */ }
+        }
+        r.put("closing", false);
+        try { getActivity().startActivity(new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, getContext().getPackageName())); } catch (Exception ignored) {}
+        call.resolve(r);
     }
 
     /** Keeps a copy of the app's data for Android's backup to the person's Google account, and asks Android to back it up soon. */
