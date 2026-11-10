@@ -189,9 +189,24 @@ public class AyuRemindersPlugin extends Plugin {
         NotificationArt.Theme theme;
         try { theme = (color != null && color.matches("^#[0-9a-fA-F]{6}$")) ? NotificationArt.fromColor(android.graphics.Color.parseColor(color)) : NotificationArt.forSection(call.getString("section", "")); }
         catch (Exception e) { theme = NotificationArt.REMINDERS; }
-        ReminderScheduler.show(getContext(), key, call.getString("title", "AyuBase6"), call.getString("body", ""),
-            Boolean.TRUE.equals(call.getBoolean("silent", false)), theme, call.getString("section", ""), call.getString("tapKey", ""));
+        String like = call.getString("previewLike", "");
+        if (like != null && !like.isEmpty()) {   // Preview notification: the real buttons of that reminder; tapping one only closes the preview
+            ReminderScheduler.show(getContext(), key, call.getString("title", "AyuBase6"), call.getString("body", ""),
+                false, theme, call.getString("section", ""), "preview:" + like, ReminderScheduler.actionsFor(like));
+        } else {
+            ReminderScheduler.show(getContext(), key, call.getString("title", "AyuBase6"), call.getString("body", ""),
+                Boolean.TRUE.equals(call.getBoolean("silent", false)), theme, call.getString("section", ""), call.getString("tapKey", ""));
+        }
         call.resolve();
+    }
+
+    /** Preview of an alarm or the timer: its real notification (colours, Snooze / Stop) for about 30 seconds, without ringing. */
+    @PluginMethod
+    public void previewAlarm(PluginCall call) {
+        JSObject cfg = call.getObject("cfg", new JSObject());
+        boolean ok = AlarmService.startPreview(getContext(), call.getString("key", "alarm-preview"), call.getString("title", "Alarm"), call.getString("body", ""),
+            cfg == null ? new org.json.JSONObject() : cfg);
+        JSObject r = new JSObject(); r.put("ok", ok); call.resolve(r);
     }
 
     @PluginMethod

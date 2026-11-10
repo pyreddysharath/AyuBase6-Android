@@ -37,7 +37,7 @@ import java.lang.ref.WeakReference;
  */
 public class AlarmService extends Service {
     static final String A_START = "com.ayubase6.app.ALARM_START";
-    static final String EX_KEY = "ayu_key", EX_TITLE = "ayu_title", EX_BODY = "ayu_body", EX_COUNT = "ayu_count", EX_CFG = "ayu_cfg";
+    static final String EX_KEY = "ayu_key", EX_TITLE = "ayu_title", EX_BODY = "ayu_body", EX_COUNT = "ayu_count", EX_CFG = "ayu_cfg", EX_PREVIEW = "ayu_preview";
     static final String CHANNEL_ALARMS = "alarms";
     static final int NOTIF_ID = 7301;
 
@@ -51,6 +51,7 @@ public class AlarmService extends Service {
     private Runnable autoStop;
     String key = "", title = "", body = "";
     int count = 0;
+    boolean preview = false;   // Preview notification: the real look and buttons, no ringing; any button just closes it
     JSONObject cfg = new JSONObject();
 
     // ── settings sent by the app with the rules (rules.alarms; key "alarm-<id>") ──
@@ -94,6 +95,19 @@ public class AlarmService extends Service {
         }
     }
 
+    /** Preview notification: the alarm's real notification for about 30 seconds, without sound, vibration or the full screen. */
+    static boolean startPreview(Context c, String key, String title, String body, JSONObject cfg) {
+        Intent i = new Intent(c, AlarmService.class).setAction(A_START).putExtra(EX_PREVIEW, true)
+            .putExtra(EX_KEY, key).putExtra(EX_TITLE, title).putExtra(EX_BODY, body).putExtra(EX_COUNT, 0).putExtra(EX_CFG, cfg.toString());
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) c.startForegroundService(i); else c.startService(i);
+            return true;
+        } catch (Exception e) {
+            Log.w(ReminderScheduler.TAG, "alarm preview could not start", e);
+            return false;
+        }
+    }
+
     static AlarmService current() { return running; }
 
     /** A Done from a normal notification for the same activity also silences its alarm. */
@@ -120,6 +134,9 @@ public class AlarmService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         if (intent == null || !A_START.equals(intent.getAction())) { stopSelf(); return START_NOT_STICKY; }
+        boolean pv = intent.getBooleanExtra(EX_PREVIEW, false);
+        if (pv && running == this && player != null) return START_NOT_STICKY;   // a real alarm is ringing: no preview over it
+        preview = pv;
         if (running == this && player != null) { leaveNotice(); stopSound(); }   // a second alarm while one rings: the first one becomes a notification
         key = str(intent.getStringExtra(EX_KEY));
         JSONObject c = config(this, key);
@@ -137,6 +154,11 @@ public class AlarmService extends Service {
             Log.w(ReminderScheduler.TAG, "alarm foreground refused", e);
             ReminderScheduler.show(this, "nudge-" + key, title, body, false, theme(), section(), key, ReminderScheduler.actionsFor(key));
             running = null; stopSelf(); return START_NOT_STICKY;
+        }
+        if (preview) {
+            if (autoStop != null) main.removeCallbacks(autoStop);
+            autoStop = this::stopAll; main.postDelayed(autoStop, 30000L);
+            return START_NOT_STICKY;
         }
         startRinging();
         int ringMin = cfg.optInt("ring", 0);
@@ -243,8 +265,8 @@ public class AlarmService extends Service {
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setOngoing(true)
             .setAutoCancel(false)
-            .setContentIntent(full)
-            .setFullScreenIntent(full, true);
+            .setContentIntent(full);
+        if (!preview) b.setFullScreenIntent(full, true);
         if (canSnooze()) b.addAction(0, "Snooze " + snoozeMin() + " min", action("snooze", 7311));
         b.addAction(0, "Stop", action("stop", 7312));
         if (key.startsWith("routine-")) b.addAction(0, "✓ Done", action("done", 7313));
@@ -253,12 +275,13 @@ public class AlarmService extends Service {
 
     // ── what the buttons (notification, alarm screen, volume keys) do ──
     void snooze() {
-        if (!canSnooze()) { stopAll(); return; }
+        if (preview || !canSnooze()) { stopAll(); return; }
         ReminderScheduler.addAlarmSnooze(this, key, title, body, count + 1, snoozeMin());
         stopAll();
     }
 
     void done() {
+        if (preview) { stopAll(); return; }
         final String k = key, t = title, b = body;
         stopAll();
         new Thread(() -> {
@@ -271,6 +294,7 @@ public class AlarmService extends Service {
 
     /** Rang for the chosen minutes without an answer: stop ringing, leave a normal notification (Done / Not yet). */
     void missed() {
+        if (preview) { stopAll(); return; }
         leaveNotice();
         stopAll();
     }

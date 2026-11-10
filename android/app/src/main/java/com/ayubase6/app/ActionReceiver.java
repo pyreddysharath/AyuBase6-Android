@@ -13,6 +13,7 @@ public class ActionReceiver extends BroadcastReceiver {
         final Context app = context.getApplicationContext();
         final String key = intent.getStringExtra(ReminderScheduler.EXTRA_KEY), action = intent.getStringExtra(EXTRA_ACTION);
         final String tag = intent.getStringExtra(EXTRA_TAG), title = intent.getStringExtra(EXTRA_TITLE), body = intent.getStringExtra(EXTRA_BODY);
+        if (key != null && key.startsWith("preview:")) { ReminderScheduler.cancel(app, tag); return; }   // a button on a Preview notification: just close it
         final PendingResult done = goAsync();
         new Thread(() -> {
             try {

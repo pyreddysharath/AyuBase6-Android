@@ -176,7 +176,7 @@
     var section = (opts.data && opts.data.section) || '', tapKey = (opts.data && opts.data.key) || '';
     var own = (section === 'alerts' || section === 'routines') && tapKey !== 'test';
     P.show({ key:key, title:this.title, body:this.body, silent:!!opts.silent, color:own ? '' : accent(),
-             section:section, tapKey:tapKey }).catch(noop);
+             section:section, tapKey:tapKey, previewLike:String((opts.data && opts.data.previewLike) || '') }).catch(noop);
   }
   AyuNotification.prototype.close = function(){ if(this.tag) P.cancel({ key:this.tag }).catch(noop); };
   AyuNotification.prototype.addEventListener = noop;
@@ -279,6 +279,7 @@
   }
   state.sync = function(){ sync(true); };
   // Settings → Notifications button: Android lets only its own settings page turn the permission on or off
+  state.previewAlarm = function(o){ return typeof P.previewAlarm === 'function' ? P.previewAlarm(o || {}) : Promise.reject(new Error('old app')); };
   state.openNotifSettings = function(){ return P.openNotificationSettings().catch(noop); };
   // Clock: the page's timer / stopwatch / World Clock state goes to the phone (live notifications with buttons, the timer's alarm)
   if(typeof P.clockSet === 'function' && typeof P.clockGet === 'function'){
