@@ -30,8 +30,9 @@ android {
     buildTypes {
         release {
             if (System.getenv("RELEASE_KEYSTORE")) signingConfig signingConfigs.release
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            // Shrink and obfuscate the release APK (harder to read if someone unpacks it); debug builds stay plain
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
 }

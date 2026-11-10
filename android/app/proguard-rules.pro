@@ -19,3 +19,18 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# ── AyuBase6 release build (minified + obfuscated) ──
+# Capacitor finds plugins and their methods by their annotations at run time.
+-keepattributes *Annotation*,Signature,InnerClasses,EnclosingMethod,Exceptions
+-keep class com.getcapacitor.** { *; }
+-keep @com.getcapacitor.annotation.CapacitorPlugin public class * { *; }
+-keep public class * extends com.getcapacitor.Plugin { *; }
+-keepclassmembers class * { @com.getcapacitor.PluginMethod public <methods>; }
+# The web view's JavaScript bridge
+-keepclassmembers class * { @android.webkit.JavascriptInterface <methods>; }
+# Ads in the web view
+-keep class com.google.android.gms.ads.** { *; }
+# Readable stack traces in crash reports, while names stay obfuscated
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile
