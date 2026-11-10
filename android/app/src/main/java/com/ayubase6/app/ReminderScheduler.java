@@ -115,9 +115,15 @@ final class ReminderScheduler {
                 if (canExact(c) && rings) {
                     // Tapping the time / next alarm on the phone opens this alarm in AyuBase6
                     String sec = "alarm-wake".equals(ringKey) ? "routines" : "alerts";
-                    PendingIntent show = PendingIntent.getActivity(c, ALARM_REQUEST + 1, new Intent(c, MainActivity.class)
+                    Intent open = new Intent(c, MainActivity.class)
                         .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP)
-                        .putExtra(EXTRA_KEY, ringKey).putExtra(EXTRA_SECTION, sec), PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+                        .putExtra(EXTRA_KEY, ringKey).putExtra(EXTRA_SECTION, sec);
+                    // Clock → Alarm "Tapping the phone's time opens: Phone's Clock": the phone's own Clock app (if it has one)
+                    if (rules != null && "clock".equals(rules.optString("alarmTap"))) {
+                        Intent clk = new Intent(android.provider.AlarmClock.ACTION_SHOW_ALARMS).setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        if (clk.resolveActivity(c.getPackageManager()) != null) open = clk;
+                    }
+                    PendingIntent show = PendingIntent.getActivity(c, ALARM_REQUEST + 1, open, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
                     am.setAlarmClock(new AlarmManager.AlarmClockInfo(ms, show), pi);
                 }
                 else if (canExact(c)) am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, ms, pi);

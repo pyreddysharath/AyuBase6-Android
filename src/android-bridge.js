@@ -247,6 +247,7 @@
     if(!list.length) return rules;
     if(!rules) rules = { v:1, tz:(function(){ try{ return Intl.DateTimeFormat().resolvedOptions().timeZone; }catch(e){ return ''; } })(), phone:true, reminders:[], exercise:null, checks:null, custom:[] };
     rules.alarms = list;
+    try{ rules.alarmTap = localStorage.getItem('ayuAlarmTap') === 'clock' ? 'clock' : 'app'; }catch(e){}   // what tapping the phone's time opens
     return rules;
   }
   state.previewTone = function(tone){ return P.previewTone({ tone:String(tone || 'rise') }); };
