@@ -432,7 +432,7 @@
       if(document.getElementById('ayu-update-card') || document.getElementById('ayu-exact-card')) return;
       var card = document.createElement('div');
       card.id = 'ayu-update-card'; card.className = 'ayu-card'; card.setAttribute('role', 'dialog'); card.setAttribute('aria-label', 'Update available');
-      card.innerHTML = '<div class="ayu-ec-text"><b>Update available</b><span>Version ' + String(cfg.versionName || '').replace(/[<>&"]/g, '') + ' of AyuBase6 is ready. Tap Update; your data stays.</span></div>'
+      card.innerHTML = '<div class="ayu-ec-text"><b>Update available</b><span>A new version of AyuBase6 is ready. Tap Update; your data stays.</span></div>'
         + '<button type="button" class="ayu-ec-later ayu-ec-x" aria-label="Close" title="Close">×</button><div class="ayu-ec-btns"><button type="button" class="ayu-ec-allow">Update</button></div>';
       card.querySelector('.ayu-ec-allow').onclick = function(){
         card.remove(); state.updateStart();

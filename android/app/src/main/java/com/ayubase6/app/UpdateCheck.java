@@ -84,8 +84,7 @@ public class UpdateCheck extends BroadcastReceiver {
         if (latest <= mine || !cfg.optString("url", "").startsWith("https://")) return;
         SharedPreferences sp = c.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
         if (sp.getLong("told", 0) >= latest || AnnouncementCheck.appVisible) return;   // once per version; the app shows its own card
-        String name = cfg.optString("versionName", "").trim();
-        ReminderScheduler.show(c, TAG, "AyuBase6 " + (name.isEmpty() ? "update" : name) + " is ready", "Tap to update.",
+        ReminderScheduler.show(c, TAG, "A new version of AyuBase6 is ready", "Tap to update.",
             true, NotificationArt.REMINDERS, "update", TAG);
         sp.edit().putLong("told", latest).apply();
     }
