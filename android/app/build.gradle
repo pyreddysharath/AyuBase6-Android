@@ -27,6 +27,15 @@ android {
             }
         }
     }
+    buildFeatures { buildConfig = true }
+    // Two versions of the same app (same app ID and signing key, so one can update the other):
+    //   website: the APK on ayubase6.com, which updates itself (downloads the new APK, opens Android's install screen)
+    //   play:    the Google Play bundle; Google Play updates it, so no self-update and no "install apps" permission
+    flavorDimensions = ["store"]
+    productFlavors {
+        website { dimension "store" }
+        play { dimension "store" }
+    }
     buildTypes {
         release {
             if (System.getenv("RELEASE_KEYSTORE")) signingConfig signingConfigs.release

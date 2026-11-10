@@ -39,10 +39,13 @@ public class UpdateCheck extends BroadcastReceiver {
     }
 
     /** The next check time (inexact: Android may move it a few minutes to save battery). */
+    /** The Google Play version is updated by Google Play: no checks of its own. */
+    static boolean selfUpdating() { return !"play".equals(BuildConfig.FLAVOR); }
+
     static void schedule(Context c) {
         AlarmManager am = (AlarmManager) c.getSystemService(Context.ALARM_SERVICE);
         if (am == null) return;
-        int n = times(c);
+        int n = selfUpdating() ? times(c) : 0;
         if (n == 0) { am.cancel(pi(c)); return; }
         Calendar now = Calendar.getInstance(), at = null;
         int mins = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE);
@@ -68,7 +71,7 @@ public class UpdateCheck extends BroadcastReceiver {
     }
 
     static void check(Context c) throws Exception {
-        if (times(c) == 0) return;
+        if (!selfUpdating() || times(c) == 0) return;
         Calendar now = Calendar.getInstance();
         int mins = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE);
         if (mins < 540 || mins > 1290) return;   // 9 AM – 9:30 PM only (a late alarm may arrive a little after 9 PM)

@@ -84,16 +84,16 @@ jobs:
 
       - name: Unit tests (reminder rules match the push server)
         working-directory: android
-        run: ./gradlew testDebugUnitTest --no-daemon --stacktrace
+        run: ./gradlew testWebsiteDebugUnitTest --no-daemon --stacktrace
 
       - name: Build debug APK
         working-directory: android
-        run: ./gradlew assembleDebug --no-daemon --stacktrace
+        run: ./gradlew assembleWebsiteDebug --no-daemon --stacktrace
 
       - name: Name the APK
         run: |
           mkdir -p out
-          cp android/app/build/outputs/apk/debug/app-debug.apk "out/AyuBase6-debug-${VERSION_CODE}.apk"
+          cp android/app/build/outputs/apk/website/debug/app-website-debug.apk "out/AyuBase6-debug-${VERSION_CODE}.apk"
           ls -la out
 
       - uses: actions/upload-artifact@v4
@@ -115,11 +115,11 @@ jobs:
           echo "$RELEASE_KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
           export RELEASE_KEYSTORE="$RUNNER_TEMP/release.jks"
           export RELEASE_KEY_PASSWORD="${RELEASE_KEY_PASSWORD:-$RELEASE_KEYSTORE_PASSWORD}"
-          # APK for the website, and the app bundle (.aab) that Google Play asks for, both signed with the same key
-          (cd android && ./gradlew assembleRelease bundleRelease --no-daemon --stacktrace)
+          # APK for the website (website version), and the app bundle (.aab) for Google Play (play version), both signed with the same key
+          (cd android && ./gradlew assembleWebsiteRelease bundlePlayRelease --no-daemon --stacktrace)
           rm -f "$RUNNER_TEMP/release.jks"
-          cp android/app/build/outputs/apk/release/app-release.apk out/AyuBase6.apk
-          mkdir -p play-out && cp android/app/build/outputs/bundle/release/app-release.aab "play-out/AyuBase6-${VERSION_CODE}.aab"
+          cp android/app/build/outputs/apk/website/release/app-website-release.apk out/AyuBase6.apk
+          mkdir -p play-out && cp android/app/build/outputs/bundle/playRelease/app-play-release.aab "play-out/AyuBase6-${VERSION_CODE}.aab"
           ls -la out play-out
 
       - name: Keep the Google Play bundle with this run

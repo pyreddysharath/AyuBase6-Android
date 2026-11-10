@@ -386,7 +386,12 @@
   }
   state.updateChecksGet = function(){ return typeof P.updateChecksGet === 'function' ? P.updateChecksGet().then(function(r){ return +(r && r.times); }) : Promise.reject(); };
   state.updateChecksSet = function(n){ return P.updateChecksSet({ times:+n }); };
+  // Which version this is: "website" (updates itself from ayubase6.com) or "play" (Google Play updates it)
+  var PLAY_URL = 'https://play.google.com/store/apps/details?id=com.ayubase6.app';
+  var storeP = P.getStatus().then(function(st){ return String((st && st.store) || 'website'); }, function(){ return 'website'; })
+    .then(function(s){ state.store = upd.store = s; if(s === 'play'){ upd.latest = null; updEvent(); } return s; });
   state.updateCheck = function(){
+    if(state.store === 'play'){ upd.error = ''; upd.phase = ''; upd.latest = null; upd.checkedAt = Date.now(); updEvent(); return Promise.resolve(upd); }
     upd.error = ''; upd.phase = upd.phase === 'downloading' ? upd.phase : 'checking'; updEvent();
     return Promise.all([
       P.getStatus().catch(function(){ return {}; }),
@@ -414,6 +419,7 @@
   }
   state.updateInstall = function(){ return openInstaller(); };
   state.updateStart = function(){
+    if(state.store === 'play'){ P.openUrl({ url:PLAY_URL }).catch(noop); return Promise.resolve(); }   // Google Play installs the updates
     var cfg = upd.latest; if(!cfg) return Promise.resolve();
     if(typeof P.updateDownload !== 'function'){ P.openUrl({ url:cfg.url }).catch(noop); return Promise.resolve(); }   // an app without it: the browser
     if(upd.phase === 'downloading') return Promise.resolve();
@@ -442,7 +448,8 @@
   });
 
   function checkUpdate(){
-    state.updateCheck().then(function(){
+    storeP.then(function(s){ if(s !== 'play') return state.updateCheck(); }).then(function(){
+      if(state.store === 'play') return;
       var cfg = upd.latest; if(!cfg) return;
       if(laterHidden(cfg.versionCode)) return;
       if(document.getElementById('ayu-update-card') || document.getElementById('ayu-exact-card')) return;

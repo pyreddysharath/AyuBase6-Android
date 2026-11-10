@@ -133,6 +133,7 @@ public class AyuRemindersPlugin extends Plugin {
         long next = ReminderScheduler.nextAt(getContext());
         if (next > 0) r.put("next", next); else r.put("next", JSONObject.NULL);
         r.put("rules", ReminderScheduler.loadRules(getContext()) != null);
+        r.put("store", BuildConfig.FLAVOR);   // "website" (updates itself) or "play" (Google Play updates it)
         try {
             android.content.pm.PackageInfo pi = getContext().getPackageManager().getPackageInfo(getContext().getPackageName(), 0);
             r.put("versionCode", Build.VERSION.SDK_INT >= Build.VERSION_CODES.P ? pi.getLongVersionCode() : pi.versionCode);
@@ -401,6 +402,7 @@ public class AyuRemindersPlugin extends Plugin {
     /** Downloads the APK (https only), sends "updateProgress" {pct}, and checks it is a newer AyuBase6 before resolving. */
     @PluginMethod
     public void updateDownload(PluginCall call) {
+        if (!UpdateCheck.selfUpdating()) { call.reject("play"); return; }   // Google Play installs the updates
         String url = call.getString("url", "");
         if (!url.startsWith("https://")) { call.reject("bad url"); return; }
         if (downloading) { call.reject("busy"); return; }
@@ -458,6 +460,7 @@ public class AyuRemindersPlugin extends Plugin {
     @PluginMethod
     public void updateInstall(PluginCall call) {
         ReminderScheduler.cancel(getContext(), UPDATE_READY);
+        if (!UpdateCheck.selfUpdating()) { call.reject("play"); return; }
         java.io.File f = updateFile();
         JSObject r = new JSObject();
         if (!f.exists()) { call.reject("no file"); return; }
