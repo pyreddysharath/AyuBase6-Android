@@ -110,10 +110,14 @@ final class ReminderScheduler {
             try {
                 // A ringing alarm is due: Android's alarm-clock alarm (on time even in deep sleep and battery saving,
                 // and allowed to start ringing with the app closed); the alarm icon shows in the status bar.
-                boolean rings = ringsAt(c, rules, sn, next);
+                String ringKey = ringKeyAt(c, rules, sn, next);
+                boolean rings = ringKey != null;
                 if (canExact(c) && rings) {
+                    // Tapping the time / next alarm on the phone opens this alarm in AyuBase6
+                    String sec = "alarm-wake".equals(ringKey) ? "routines" : "alerts";
                     PendingIntent show = PendingIntent.getActivity(c, ALARM_REQUEST + 1, new Intent(c, MainActivity.class)
-                        .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP), PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+                        .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                        .putExtra(EXTRA_KEY, ringKey).putExtra(EXTRA_SECTION, sec), PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
                     am.setAlarmClock(new AlarmManager.AlarmClockInfo(ms, show), pi);
                 }
                 else if (canExact(c)) am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, ms, pi);
@@ -132,17 +136,17 @@ final class ReminderScheduler {
         return nextMs;
     }
 
-    /** Does an alarm (Checks wake-up or Reminders alarm) ring at minute t? */
-    static boolean ringsAt(Context c, JSONObject rules, org.json.JSONArray sn, long t) {
+    /** The alarm (Checks wake-up or Reminders alarm) that rings at minute t, or null. */
+    static String ringKeyAt(Context c, JSONObject rules, org.json.JSONArray sn, long t) {
         try {
             if (rules != null) for (ReminderRules.Due d : ReminderRules.due(rules, local(t), t))
-                if (d.key.startsWith("alarm-") && AlarmService.config(c, d.key) != null) return true;
+                if (d.key.startsWith("alarm-") && AlarmService.config(c, d.key) != null) return d.key;
             for (int i = 0; sn != null && i < sn.length(); i++) {
                 JSONObject o = sn.optJSONObject(i);
-                if (o != null && o.optLong("t") == t && o.optBoolean("alarm", false)) return true;
+                if (o != null && o.optLong("t") == t && o.optBoolean("alarm", false)) return o.optString("key", "alarm-rem");
             }
         } catch (Exception ignored) {}
-        return false;
+        return null;
     }
 
     /** The alarm for minute `target` rang: show what is due (latest per reminder), then set the next alarm. */

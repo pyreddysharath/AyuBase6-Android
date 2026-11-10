@@ -530,6 +530,7 @@
   function openTap(d){
     if(!ready){ pendingTap = d; return; }
     var key = String(d && d.key || ''), section = String(d && d.section || '');
+    if(/^alarm-[a-z]+$/.test(key) && typeof window.ayuShowAlarm === 'function'){ window.ayuShowAlarm(key.slice(6)); return; }   // the phone's next-alarm tap
     if(section === 'alerts' || section === 'routines'){
       try{ if(typeof switchTab === 'function') switchTab(section); }catch(e){}
       try{ if(typeof nudgeShowSection === 'function') nudgeShowSection(key); }catch(e){}
