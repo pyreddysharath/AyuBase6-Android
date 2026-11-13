@@ -408,6 +408,7 @@ final class ReminderScheduler {
                     android.graphics.Bitmap bell = art("belloff" + theme.key() + dark, () -> NotificationArt.bellOff(theme, dark));
                     android.widget.RemoteViews small = offView(c, b, title, body, bell, api, 1), big = offView(c, b, title, body, bell, api, 5);
                     b.setStyle(new NotificationCompat.DecoratedCustomViewStyle()).setCustomContentView(small).setCustomBigContentView(big).setCustomHeadsUpContentView(small);
+                    b.setLargeIcon((android.graphics.Bitmap) null);   // the picture at the top right took half the width: the text now uses the full width, the bell sits at the bottom right
                     continue;
                 } catch (Exception e) { /* the word button instead */ }
             }

@@ -6,5 +6,5 @@
         <TextView android:id="@+id/nr_title" android:layout_width="match_parent" android:layout_height="wrap_content" android:singleLine="true" android:ellipsize="end" android:textAppearance="@style/TextAppearance.Compat.Notification.Title" />
         <TextView android:id="@+id/nr_text" android:layout_width="match_parent" android:layout_height="wrap_content" android:maxLines="5" android:ellipsize="end" android:textAppearance="@style/TextAppearance.Compat.Notification" />
     </LinearLayout>
-    <ImageView android:id="@+id/nr_off" android:layout_width="36dp" android:layout_height="36dp" android:layout_marginStart="10dp" android:contentDescription="Turn off this reminder" />
+    <ImageView android:id="@+id/nr_off" android:layout_width="34dp" android:layout_height="34dp" android:layout_marginStart="12dp" android:layout_gravity="bottom|end" android:contentDescription="Turn off this reminder" />
 </LinearLayout>
