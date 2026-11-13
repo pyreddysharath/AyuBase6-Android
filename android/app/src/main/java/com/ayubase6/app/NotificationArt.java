@@ -114,6 +114,14 @@ final class NotificationArt {
         return b;
     }
 
+    /** The lotus alone, as the small icon beside the app name: Android fills it with the section colour of the notification. */
+    static Bitmap mark() {
+        int s = 96;
+        Bitmap b = Bitmap.createBitmap(s, s, Bitmap.Config.ARGB_8888);
+        lotus(new Canvas(b), 48, 76, 2.35f, Color.WHITE, 1f);
+        return b;
+    }
+
     static Bitmap logo(Theme t) {
         int s = 192;
         Bitmap b = Bitmap.createBitmap(s, s, Bitmap.Config.ARGB_8888);

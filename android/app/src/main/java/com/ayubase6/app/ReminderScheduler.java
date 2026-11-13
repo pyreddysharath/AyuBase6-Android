@@ -117,7 +117,7 @@ final class ReminderScheduler {
         String when = java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).format(new java.util.Date(ms));
         String name = noTime(title);
         NotificationCompat.Builder b = new NotificationCompat.Builder(c, CHANNEL_UPDATES)
-            .setSmallIcon(R.drawable.ic_stat_lotus)
+            .setSmallIcon(smallIcon(c))
             .setContentTitle("Alarm at " + when)
             .setContentText("Alarm".equals(name) || name.isEmpty() ? "Upcoming alarm" : name)
             .setLargeIcon(art("alarm" + theme.key(), () -> NotificationArt.alarm(theme)))   // an alarm clock in the section's colour
@@ -358,14 +358,26 @@ final class ReminderScheduler {
         return id;
     }
 
-    private static android.widget.RemoteViews offView(Context c, NotificationCompat.Builder b, String title, String body, android.graphics.Bitmap bell, PendingIntent off, int lines) {
+    /** The reminder as the app draws it. Closed (`open` false): one line of text with Start and the bell beside it.
+     *  Open: the whole text, then Start and the bell on the last line (without Start the bell stays beside the text). */
+    private static android.widget.RemoteViews offView(Context c, String title, String body, android.graphics.Bitmap bell, PendingIntent off, PendingIntent start, boolean open) {
         android.widget.RemoteViews v = new android.widget.RemoteViews(c.getPackageName(), R.layout.notif_reminder);
         v.setTextViewText(R.id.nr_title, title == null ? "" : title);
         v.setTextViewText(R.id.nr_text, body == null ? "" : body);
-        v.setInt(R.id.nr_text, "setMaxLines", lines);
-        v.setImageViewBitmap(R.id.nr_off, bell);
-        v.setOnClickPendingIntent(R.id.nr_off, off);
+        v.setInt(R.id.nr_text, "setMaxLines", open ? 6 : 1);
+        boolean row = open && start != null;
+        v.setViewVisibility(R.id.nr_row, row ? android.view.View.VISIBLE : android.view.View.GONE);
+        v.setViewVisibility(R.id.nr_off_side, row ? android.view.View.GONE : android.view.View.VISIBLE);
+        v.setViewVisibility(R.id.nr_start_side, !row && start != null ? android.view.View.VISIBLE : android.view.View.GONE);
+        v.setImageViewBitmap(R.id.nr_off, bell); v.setImageViewBitmap(R.id.nr_off_side, bell);
+        v.setOnClickPendingIntent(R.id.nr_off, off); v.setOnClickPendingIntent(R.id.nr_off_side, off);
+        if (start != null) { v.setOnClickPendingIntent(R.id.nr_start, start); v.setOnClickPendingIntent(R.id.nr_start_side, start); }
         return v;
+    }
+    /** The small icon beside the app name: the lotus, which Android fills with the notification's section colour. */
+    static androidx.core.graphics.drawable.IconCompat smallIcon(Context c) {
+        try { return androidx.core.graphics.drawable.IconCompat.createWithBitmap(art("mark", NotificationArt::mark)); }
+        catch (Exception e) { return androidx.core.graphics.drawable.IconCompat.createWithResource(c, R.drawable.ic_stat_lotus); }
     }
 
     static void show(Context c, String tag, String title, String body, boolean silent, NotificationArt.Theme theme, String section, String tapKey, String[] actions, boolean vibrate, String sound) {
@@ -380,7 +392,7 @@ final class ReminderScheduler {
         // Vibrate switch off: the same sound, without vibration (Android 8+ keeps vibration per channel)
         String channel = silent ? CHANNEL_UPDATES : (sound != null && !sound.isEmpty()) ? toneChannel(c, sound, vibrate) : (vibrate ? CHANNEL_REMINDERS : CHANNEL_REMINDERS_QUIET);
         NotificationCompat.Builder b = new NotificationCompat.Builder(c, channel)
-            .setSmallIcon(R.drawable.ic_stat_lotus)
+            .setSmallIcon(smallIcon(c))
             .setContentTitle(title)
             .setContentText(body)
             // Standard Android look (Android 12+ always frames a custom picture): the section logo on the right, the section colour for the app name and buttons
@@ -397,22 +409,28 @@ final class ReminderScheduler {
         if (!silent && !vibrate) b.setVibrate(new long[]{0});   // Android 7 and older
         boolean checks = tapKey != null && (tapKey.startsWith("routine-") || tapKey.startsWith("alarm-"));
         if (checks) { b.setShowWhen(false); b.setContentTitle(noTime(title)); }   // the time is not repeated on the notification
+        java.util.LinkedHashMap<String, PendingIntent> acts = new java.util.LinkedHashMap<>();
         for (String a : actions) {
             Intent ai = new Intent(c, ActionReceiver.class).setAction("com.ayubase6.app.ACTION." + a)
                 .putExtra(EXTRA_KEY, tapKey).putExtra(ActionReceiver.EXTRA_ACTION, a).putExtra(ActionReceiver.EXTRA_TAG, tag)
                 .putExtra(ActionReceiver.EXTRA_TITLE, title).putExtra(ActionReceiver.EXTRA_BODY, body);
-            PendingIntent api = PendingIntent.getBroadcast(c, (tag + "|" + a).hashCode(), ai, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-            if (A_OFF_THIS.equals(a)) {   // "Turn off this" is an icon at the bottom right, in the section's colour
-                try {
-                    boolean dark = (c.getResources().getConfiguration().uiMode & android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES;
-                    android.graphics.Bitmap bell = art("belloff" + theme.key() + dark, () -> NotificationArt.bellOff(theme, dark));
-                    android.widget.RemoteViews small = offView(c, b, title, body, bell, api, 1), big = offView(c, b, title, body, bell, api, 5);
-                    b.setStyle(new NotificationCompat.DecoratedCustomViewStyle()).setCustomContentView(small).setCustomBigContentView(big).setCustomHeadsUpContentView(small);
-                    b.setLargeIcon((android.graphics.Bitmap) null);   // the picture at the top right took half the width: the text now uses the full width, the bell sits at the bottom right
-                    continue;
-                } catch (Exception e) { /* the word button instead */ }
-            }
-            b.addAction(0, actionLabel(a), api);
+            acts.put(a, PendingIntent.getBroadcast(c, (tag + "|" + a).hashCode(), ai, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE));
+        }
+        boolean own = false;
+        if (acts.containsKey(A_OFF_THIS)) {   // "Turn off this" is a bell icon at the bottom right; on Eyes, Start sits on the same line
+            try {
+                boolean dark = (c.getResources().getConfiguration().uiMode & android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES;
+                android.graphics.Bitmap bell = art("belloff" + theme.key() + dark, () -> NotificationArt.bellOff(theme, dark));
+                PendingIntent off = acts.get(A_OFF_THIS), start = acts.get(A_EYES_START);
+                android.widget.RemoteViews small = offView(c, title, body, bell, off, start, false), big = offView(c, title, body, bell, off, start, true);
+                b.setStyle(new NotificationCompat.DecoratedCustomViewStyle()).setCustomContentView(small).setCustomBigContentView(big).setCustomHeadsUpContentView(small);
+                b.setLargeIcon((android.graphics.Bitmap) null);   // no picture at the top right: the text uses the full width
+                own = true;
+            } catch (Exception e) { own = false; }
+        }
+        for (java.util.Map.Entry<String, PendingIntent> e : acts.entrySet()) {
+            if (own && (A_OFF_THIS.equals(e.getKey()) || A_EYES_START.equals(e.getKey()))) continue;   // already in the app's own drawing
+            b.addAction(0, actionLabel(e.getKey()), e.getValue());
         }
         try {
             nm.notify(idFor(tag), b.build());
@@ -562,7 +580,7 @@ final class ReminderScheduler {
         PendingIntent offPi = PendingIntent.getBroadcast(c, (tag + "|off").hashCode(), off, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         String when = java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).format(new java.util.Date(atMs));
         NotificationCompat.Builder b = new NotificationCompat.Builder(c, CHANNEL_UPDATES)
-            .setSmallIcon(R.drawable.ic_stat_lotus)
+            .setSmallIcon(smallIcon(c))
             .setContentTitle("⏰ " + noTime(title))
             .setContentText("Snoozed · rings at " + when)
             .setLargeIcon(art("logo" + theme.key(), () -> NotificationArt.logo(theme)))
@@ -628,7 +646,7 @@ final class ReminderScheduler {
             .putExtra(EXTRA_KEY, "break").putExtra(EXTRA_SECTION, "alerts");
         PendingIntent pi = PendingIntent.getActivity(c, idFor(tag), open, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         NotificationCompat.Builder b = new NotificationCompat.Builder(c, CHANNEL_UPDATES)
-            .setSmallIcon(R.drawable.ic_stat_lotus)
+            .setSmallIcon(smallIcon(c))
             .setContentTitle(title == null || title.isEmpty() ? "Eyes" : title)
             .setContentText("Look 20 feet away until the time runs out.")
             .setLargeIcon(art("logo" + theme.key(), () -> NotificationArt.logo(theme)))
