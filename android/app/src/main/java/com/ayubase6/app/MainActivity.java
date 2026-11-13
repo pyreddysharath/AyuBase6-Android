@@ -21,6 +21,19 @@ public class MainActivity extends BridgeActivity {
             android.webkit.CookieManager.getInstance().setAcceptThirdPartyCookies(wv, true);
             try { com.google.android.gms.ads.MobileAds.registerWebView(wv); } catch (Throwable ignored) {}
         }
+        // A new version of the app: the WebView's kept copies of the old pages are dropped, so every screen is the new one
+        try {
+            android.content.SharedPreferences sp = getSharedPreferences("ayu_app", MODE_PRIVATE);
+            int was = sp.getInt("www_version", 0), now = BuildConfig.VERSION_CODE;
+            if (was != now) {
+                sp.edit().putInt("www_version", now).apply();
+                if (getBridge() != null && getBridge().getWebView() != null) {
+                    android.webkit.WebView wv = getBridge().getWebView();
+                    wv.clearCache(true);
+                    wv.postDelayed(wv::reload, 300);
+                }
+            }
+        } catch (Exception ignored) {}
         try { AnnouncementCheck.schedule(this); } catch (Exception ignored) {}
         try { UpdateCheck.schedule(this); } catch (Exception ignored) {}
     }
