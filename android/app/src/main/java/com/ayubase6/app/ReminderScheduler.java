@@ -118,9 +118,9 @@ final class ReminderScheduler {
         String name = noTime(title);
         NotificationCompat.Builder b = new NotificationCompat.Builder(c, CHANNEL_UPDATES)
             .setSmallIcon(R.drawable.ic_stat_lotus)
-            .setContentTitle("⏰ Alarm at " + when)
+            .setContentTitle("Alarm at " + when)
             .setContentText("Alarm".equals(name) || name.isEmpty() ? "Upcoming alarm" : name)
-            .setLargeIcon(art("logo" + theme.key(), () -> NotificationArt.logo(theme)))
+            .setLargeIcon(art("alarm" + theme.key(), () -> NotificationArt.alarm(theme)))   // an alarm clock in the section's colour
             .setColor(theme.deep).setContentIntent(pi)
             .setOngoing(true).setAutoCancel(false).setOnlyAlertOnce(true).setSilent(true)
             .setUsesChronometer(true).setChronometerCountDown(true).setWhen(ms).setShowWhen(true)

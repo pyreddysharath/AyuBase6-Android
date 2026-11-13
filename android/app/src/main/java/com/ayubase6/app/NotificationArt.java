@@ -70,6 +70,26 @@ final class NotificationArt {
     }
 
     /** Solid section-coloured logo with a white lotus (the web app's notification icon), rounded. */
+    /** An alarm clock in the section's colour (the note before an alarm rings). */
+    static Bitmap alarm(Theme t) {
+        int s = 192;
+        Bitmap b = Bitmap.createBitmap(s, s, Bitmap.Config.ARGB_8888);
+        Canvas cv = new Canvas(b);
+        Paint bg = new Paint(Paint.ANTI_ALIAS_FLAG);
+        bg.setShader(new LinearGradient(0, 0, s, s, t.ic0, t.ic1, Shader.TileMode.CLAMP));
+        cv.drawRoundRect(new RectF(0, 0, s, s), 44, 44, bg);
+        Paint w = new Paint(Paint.ANTI_ALIAS_FLAG);
+        w.setColor(Color.WHITE); w.setStyle(Paint.Style.STROKE); w.setStrokeWidth(12); w.setStrokeCap(Paint.Cap.ROUND); w.setStrokeJoin(Paint.Join.ROUND);
+        cv.drawCircle(96, 104, 50, w);                 // the face
+        cv.drawLine(96, 104, 96, 74, w);               // hands
+        cv.drawLine(96, 104, 118, 116, w);
+        cv.drawLine(42, 58, 64, 40, w);                // bells
+        cv.drawLine(150, 58, 128, 40, w);
+        cv.drawLine(62, 146, 52, 160, w);              // feet
+        cv.drawLine(130, 146, 140, 160, w);
+        return b;
+    }
+
     static Bitmap logo(Theme t) {
         int s = 192;
         Bitmap b = Bitmap.createBitmap(s, s, Bitmap.Config.ARGB_8888);
