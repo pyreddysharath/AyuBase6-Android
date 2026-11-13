@@ -522,7 +522,8 @@ public class AyuRemindersPlugin extends Plugin {
         stopPreviewNow();
         String tone = call.getString("tone", "rise");
         android.net.Uri uri;
-        if ("phone".equals(tone)) {
+        if (tone != null && tone.startsWith("content://")) uri = android.net.Uri.parse(tone);
+        else if ("phone".equals(tone)) {
             uri = android.media.RingtoneManager.getActualDefaultRingtoneUri(getContext(), android.media.RingtoneManager.TYPE_ALARM);
             if (uri == null) uri = android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_ALARM);
             if (uri == null) uri = android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_RINGTONE);
@@ -543,6 +544,30 @@ public class AyuRemindersPlugin extends Plugin {
 
     @PluginMethod
     public void stopPreview(PluginCall call) { stopPreviewNow(); call.resolve(); }
+
+    /** The phone's own alarm sounds and ringtones (title and address), for the alarm Sound list. */
+    @PluginMethod
+    public void listTones(PluginCall call) {
+        new Thread(() -> {
+            org.json.JSONArray out = new org.json.JSONArray();
+            java.util.HashSet<String> seen = new java.util.HashSet<>();
+            for (int type : new int[]{android.media.RingtoneManager.TYPE_ALARM, android.media.RingtoneManager.TYPE_RINGTONE}) {
+                try {
+                    android.media.RingtoneManager rm = new android.media.RingtoneManager(getContext());
+                    rm.setType(type);
+                    android.database.Cursor c = rm.getCursor();
+                    for (int i = 0; c != null && i < c.getCount() && out.length() < 80; i++) {
+                        c.moveToPosition(i);
+                        String title = c.getString(android.media.RingtoneManager.TITLE_COLUMN_INDEX);
+                        android.net.Uri u = rm.getRingtoneUri(i);
+                        if (title == null || u == null || !seen.add(title)) continue;
+                        out.put(new JSONObject().put("title", title).put("uri", u.toString()));
+                    }
+                } catch (Exception ignored) {}
+            }
+            JSObject r = new JSObject(); r.put("tones", out); call.resolve(r);
+        }, "ayu-tones").start();
+    }
 
     private void stopPreviewNow() {
         previewStop.removeCallbacksAndMessages(null);

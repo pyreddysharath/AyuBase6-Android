@@ -253,6 +253,7 @@
   state.previewTone = function(tone){ return P.previewTone({ tone:String(tone || 'rise') }); };
   state.stopPreview = function(){ return P.stopPreview().catch(noop); };
   state.saveTone = function(b64){ return P.saveTone({ base64:b64 }); };
+  if(typeof P.listTones === 'function') state.listTones = function(){ return P.listTones().then(function(r){ return (r && r.tones) || []; }); };   // the phone's alarm sounds and ringtones
   document.addEventListener('ayu-alarm-changed', function(){
     // an alarm needs notifications allowed (its screen and buttons come through one)
     if(alarmList().length && perm !== 'granted'){ try{ window.Notification.requestPermission(); }catch(e){} }

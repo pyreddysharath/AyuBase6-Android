@@ -243,7 +243,7 @@ final class ReminderScheduler {
     static final String A_DONE = "done", A_NOT_YET = "not-yet", A_OFF_THIS = "disable-this", A_OFF_ALL = "disable-all";
     static String[] actionsFor(String key) {
         if (key.startsWith("routine-")) return new String[]{A_DONE, A_NOT_YET};
-        if (key.matches("^(break|walk|drink|eyeex)$")) return new String[]{A_OFF_THIS, A_OFF_ALL};
+        if (key.matches("^(break|walk|drink|eyeex|posture|stretch|breathe|stand)$")) return new String[]{A_OFF_THIS};   // "Turn off all" was dropped: one wrong tap silenced everything
         return new String[0];   // My Reminders: no buttons, as on the website
     }
     private static String actionLabel(String a) {

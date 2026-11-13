@@ -285,6 +285,7 @@ public class AlarmService extends Service {
 
     private Uri toneUri() {
         String tone = cfg.optString("tone", "rise");
+        if (tone.startsWith("content://")) return Uri.parse(tone);   // one of the phone's own alarm sounds or ringtones
         if ("phone".equals(tone)) {
             Uri u = RingtoneManager.getActualDefaultRingtoneUri(this, RingtoneManager.TYPE_ALARM);
             if (u == null) u = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
