@@ -18,13 +18,13 @@ import java.util.Calendar;
 
 /**
  * Looks for a new app version (config/android-app.json on the website, the file the app's own check reads)
- * 1–4 times a day, only between 9 AM and 9 PM, and leaves one quiet notification per new version.
- * Times a day: 1 = 9 AM; 2 = 9 AM, 9 PM; 3 = 9 AM, 3 PM, 9 PM; 4 = 9 AM, 1 PM, 5 PM, 9 PM. 0 = off. Default 2.
+ * every 2 hours from 10 AM to 8 PM (10, 12, 2, 4, 6, 8: 6 times a day), and leaves one quiet notification per new version.
+ * The stored "times" value is only on (above 0) or off (0); it is on by default.
  */
 public class UpdateCheck extends BroadcastReceiver {
     static final String URL_JSON = "https://ayubase6.com/config/android-app.json", PREFS = "ayu_upd", TAG = "app-update";
     private static final String ACTION = "com.ayubase6.app.UPDATE_CHECK";
-    private static final int[][] SLOTS = { {}, {540}, {540, 1260}, {540, 900, 1260}, {540, 780, 1020, 1260} };
+    private static final int[] SLOTS = { 600, 720, 840, 960, 1080, 1200 };
 
     static int times(Context c) { return Math.max(0, Math.min(4, c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getInt("times", 2))); }
 
@@ -49,7 +49,7 @@ public class UpdateCheck extends BroadcastReceiver {
         if (n == 0) { am.cancel(pi(c)); return; }
         Calendar now = Calendar.getInstance(), at = null;
         int mins = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE);
-        for (int d = 0; d < 2 && at == null; d++) for (int s : SLOTS[n]) {
+        for (int d = 0; d < 2 && at == null; d++) for (int s : SLOTS) {
             if (d == 0 && s <= mins) continue;
             Calendar t = (Calendar) now.clone(); t.add(Calendar.DATE, d);
             t.set(Calendar.HOUR_OF_DAY, s / 60); t.set(Calendar.MINUTE, s % 60); t.set(Calendar.SECOND, 0); t.set(Calendar.MILLISECOND, 0);
@@ -74,7 +74,7 @@ public class UpdateCheck extends BroadcastReceiver {
         if (!selfUpdating() || times(c) == 0) return;
         Calendar now = Calendar.getInstance();
         int mins = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE);
-        if (mins < 540 || mins > 1290) return;   // 9 AM – 9:30 PM only (a late alarm may arrive a little after 9 PM)
+        if (mins < 600 || mins > 1230) return;   // 10 AM – 8:30 PM only (a late alarm may arrive a little after 8 PM)
         HttpURLConnection h = (HttpURLConnection) new URL(URL_JSON + "?t=" + System.currentTimeMillis()).openConnection();
         h.setConnectTimeout(10000); h.setReadTimeout(10000); h.setUseCaches(false);
         if (h.getResponseCode() != 200) return;
