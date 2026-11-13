@@ -320,6 +320,10 @@
     return P.checkPermissions().then(function(r){
       setPerm(mapPerm(r && r.notifications));
       setSnoozed(r && r.snoozed);
+      if(r && r.wakeShift && r.wakeShift.min > 0 && typeof window.ayuWakeShift === 'function'){   // the wake-up alarm was snoozed while the app was closed
+        try{ window.ayuWakeShift(+r.wakeShift.min, String(r.wakeShift.day || '')); }catch(e){}
+        if(typeof P.wakeShiftClear === 'function') P.wakeShiftClear().catch(noop);
+      }
       var ex = !(r && r.exactAlarm === false);
       if(ex !== state.exact){ state.exact = ex; sync(true); }
       showExactCard(); showBlockedCard();

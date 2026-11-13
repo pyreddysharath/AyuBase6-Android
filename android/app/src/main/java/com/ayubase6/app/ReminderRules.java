@@ -144,6 +144,10 @@ final class ReminderRules {
                 if (it == null || !KEY.matcher(it.optString("key")).matches() || it.optBoolean("muted", false)) continue;
                 Double at = num(it, "at"), end = num(it, "end");
                 if (at == null) continue;
+                // The wake-up alarm was snoozed today: the day's checks move by the same minutes (set by the phone, today only)
+                if (local.day.equals(ck.optString("shiftDay")) && ck.optInt("shiftMin", 0) > 0) {
+                    at = (at + ck.optInt("shiftMin")) % 1440; if (end != null) end = (end + ck.optInt("shiftMin")) % 1440;
+                }
                 String key = it.optString("key");
                 if (m == at) out.add(new Due("routine-" + key, str(it.opt("title"), 80), str(it.opt("body"), 200), "routines").vib(ck).sayAs(it.optString("say", "")));
                 if ("beforeend".equals(mode) && end != null && end - 15 > at && m == end - 15 && !hasStr(done, key)) {

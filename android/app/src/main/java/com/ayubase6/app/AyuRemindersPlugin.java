@@ -95,6 +95,10 @@ public class AyuRemindersPlugin extends Plugin {
         call.resolve();
     }
 
+    /** The app has moved today's wake-up time itself: the phone's own shift ends. */
+    @PluginMethod
+    public void wakeShiftClear(PluginCall call) { ReminderScheduler.clearWakeShift(getContext()); call.resolve(); }
+
     @PluginMethod
     public void takeActions(PluginCall call) {
         JSObject r = new JSObject();
@@ -152,6 +156,8 @@ public class AyuRemindersPlugin extends Plugin {
         r.put("store", BuildConfig.FLAVOR);   // "website" (APK from ayubase6.com) or "play" (Google Play updates it)
         r.put("selfInstall", false);          // no installer inside the app: a new version downloads in the browser
         r.put("snoozed", ReminderScheduler.snoozedAlarms(getContext()));   // snoozed alarms and when each rings next
+        JSONObject ws = ReminderScheduler.wakeShift(getContext());
+        if (ws != null) r.put("wakeShift", ws);   // the wake-up alarm was snoozed today: the app moves the day by these minutes
         try {
             android.content.pm.PackageInfo pi = getContext().getPackageManager().getPackageInfo(getContext().getPackageName(), 0);
             r.put("versionCode", Build.VERSION.SDK_INT >= Build.VERSION_CODES.P ? pi.getLongVersionCode() : pi.versionCode);

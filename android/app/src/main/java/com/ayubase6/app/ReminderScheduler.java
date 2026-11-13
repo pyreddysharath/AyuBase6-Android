@@ -55,7 +55,78 @@ final class ReminderScheduler {
     static JSONObject loadRules(Context c) {
         String s = prefs(c).getString(PREF_RULES, null);
         if (s == null) return null;
-        try { return new JSONObject(s); } catch (Exception e) { return null; }
+        try {
+            JSONObject r = new JSONObject(s);
+            JSONObject ck = r.optJSONObject("checks"), sh = wakeShift(c);   // a snoozed wake-up alarm moves today's checks
+            if (ck != null && sh != null) { ck.put("shiftDay", sh.optString("day")); ck.put("shiftMin", sh.optInt("min")); }
+            return r;
+        } catch (Exception e) { return null; }
+    }
+
+    /** Today's shift of the Checks times after the wake-up alarm was snoozed: {day, min}, or null. The app takes it over when it opens. */
+    static JSONObject wakeShift(Context c) {
+        try {
+            JSONObject o = new JSONObject(prefs(c).getString("wakeShift", "{}"));
+            String today = local(System.currentTimeMillis() / 60000L).day;
+            return today.equals(o.optString("day")) && o.optInt("min", 0) > 0 ? o : null;
+        } catch (Exception e) { return null; }
+    }
+    static void addWakeShift(Context c, int minutes) {
+        try {
+            JSONObject old = wakeShift(c);
+            String today = local(System.currentTimeMillis() / 60000L).day;
+            prefs(c).edit().putString("wakeShift", new JSONObject().put("day", today).put("min", (old == null ? 0 : old.optInt("min")) + minutes).toString()).apply();
+        } catch (Exception ignored) {}
+    }
+    static void clearWakeShift(Context c) { prefs(c).edit().remove("wakeShift").apply(); }
+
+    // ── Checks that only matter while the phone is in use ("Do not use mobile", "Sleep"): not sent to a phone that is put away ──
+    static boolean onlyInUse(String key) { return key != null && key.matches("^routine-(end-|again-)?(nomobile|sleep)$"); }
+    static boolean inUse(Context c) {
+        try { android.os.PowerManager pm = (android.os.PowerManager) c.getSystemService(Context.POWER_SERVICE); return pm == null || pm.isInteractive(); }
+        catch (Exception e) { return true; }
+    }
+
+    // ── A quiet note two hours before an alarm rings ("Alarm at 6:30 AM"), also on the lock screen ──
+    static final String UPCOMING_TAG = "alarm-upcoming";
+    private static final long UPCOMING_MS = 2 * 60 * 60000L;
+    private static void upcoming(Context c, AlarmManager am, JSONObject rules, long now) {
+        Intent wi = new Intent(c, AlarmReceiver.class).setAction("com.ayubase6.app.UPCOMING");
+        PendingIntent wake = PendingIntent.getBroadcast(c, ALARM_REQUEST + 2, wi, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        am.cancel(wake);
+        long ring = 0; String key = null, title = "";
+        if (rules != null) for (long t = now + 1; t <= now + 1440L && ring == 0; t++) {
+            for (ReminderRules.Due d : ReminderRules.due(rules, local(t), t))
+                if (d.key.startsWith("alarm-") && AlarmService.config(c, d.key) != null) { ring = t; key = d.key; title = d.title; break; }
+        }
+        if (ring == 0) { cancel(c, UPCOMING_TAG); return; }
+        long ms = ring * 60000L, left = ms - System.currentTimeMillis();
+        if (left > UPCOMING_MS) {   // not yet: come back two hours before it
+            cancel(c, UPCOMING_TAG);
+            try { am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, ms - UPCOMING_MS, wake); } catch (Exception ignored) {}
+            return;
+        }
+        NotificationManagerCompat nm = NotificationManagerCompat.from(c);
+        if (!nm.areNotificationsEnabled()) return;
+        ensureChannels(c);
+        String sec = "alarm-wake".equals(key) ? "routines" : "alerts";
+        NotificationArt.Theme theme = NotificationArt.forSection(sec);
+        Intent open = new Intent(c, MainActivity.class).setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            .putExtra(EXTRA_KEY, key).putExtra(EXTRA_SECTION, sec);
+        PendingIntent pi = PendingIntent.getActivity(c, idFor(UPCOMING_TAG), open, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        String when = java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).format(new java.util.Date(ms));
+        String name = noTime(title);
+        NotificationCompat.Builder b = new NotificationCompat.Builder(c, CHANNEL_UPDATES)
+            .setSmallIcon(R.drawable.ic_stat_lotus)
+            .setContentTitle("⏰ Alarm at " + when)
+            .setContentText("Alarm".equals(name) || name.isEmpty() ? "Upcoming alarm" : name)
+            .setLargeIcon(art("logo" + theme.key(), () -> NotificationArt.logo(theme)))
+            .setColor(theme.deep).setContentIntent(pi)
+            .setOngoing(true).setAutoCancel(false).setOnlyAlertOnce(true).setSilent(true)
+            .setUsesChronometer(true).setChronometerCountDown(true).setWhen(ms).setShowWhen(true)
+            .setCategory(NotificationCompat.CATEGORY_ALARM).setPriority(NotificationCompat.PRIORITY_LOW)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC);
+        try { nm.notify(idFor(UPCOMING_TAG), b.build()); } catch (SecurityException ignored) {}
     }
 
     static void saveRules(Context c, JSONObject rules) {
@@ -136,6 +207,7 @@ final class ReminderScheduler {
                 am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, ms, pi);
             }
         }
+        try { upcoming(c, am, rules, now); } catch (Exception ignored) {}
         long nextMs = next * 60000L;
         prefs(c).edit().putLong(PREF_NEXT, nextMs).apply();
         Log.i(TAG, "next reminder at " + (next > 0 ? Instant.ofEpochMilli(nextMs).toString() : "none") + (canExact(c) ? " (exact)" : " (inexact)"));
@@ -174,6 +246,7 @@ final class ReminderScheduler {
                 boolean ring = isAlarm && late <= 2;
                 if (isAlarm && !ring) AlarmLog.add(c, "late:" + d.key + ":" + late);
                 if (ring) { boolean ok = AlarmService.start(c, d.key, d.title, d.body, 0); AlarmLog.add(c, (ok ? "fired:" : "blocked:") + d.key); if (ok) continue; }
+                if (onlyInUse(d.key) && !inUse(c)) continue;   // the phone is put away: no "Do not use mobile" / "Sleep" reminder
                 show(c, "nudge-" + d.key, d.title, d.body, false, NotificationArt.forSection(d.section), d.section, d.key, actionsFor(d.key), d.vibrate, d.sound);
                 if (!d.say.isEmpty() && NotificationManagerCompat.from(c).areNotificationsEnabled()) Speaker.say(c, d.say, d.voice, d.lang);
             }
@@ -451,6 +524,7 @@ final class ReminderScheduler {
             keep.put(e);
             saveSnoozes(c, keep);
         } catch (Exception ignored) {}
+        if ("alarm-wake".equals(key)) addWakeShift(c, minutes);   // the day starts later: today's checks move with it
         reschedule(c);
         showSnoozed(c, key, title, at * 60000L, section);
     }
