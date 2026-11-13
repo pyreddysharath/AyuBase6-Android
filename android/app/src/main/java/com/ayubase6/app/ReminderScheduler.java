@@ -358,6 +358,16 @@ final class ReminderScheduler {
         return id;
     }
 
+    private static android.widget.RemoteViews offView(Context c, NotificationCompat.Builder b, String title, String body, android.graphics.Bitmap bell, PendingIntent off, int lines) {
+        android.widget.RemoteViews v = new android.widget.RemoteViews(c.getPackageName(), R.layout.notif_reminder);
+        v.setTextViewText(R.id.nr_title, title == null ? "" : title);
+        v.setTextViewText(R.id.nr_text, body == null ? "" : body);
+        v.setInt(R.id.nr_text, "setMaxLines", lines);
+        v.setImageViewBitmap(R.id.nr_off, bell);
+        v.setOnClickPendingIntent(R.id.nr_off, off);
+        return v;
+    }
+
     static void show(Context c, String tag, String title, String body, boolean silent, NotificationArt.Theme theme, String section, String tapKey, String[] actions, boolean vibrate, String sound) {
         ensureChannels(c);
         NotificationManagerCompat nm = NotificationManagerCompat.from(c);
@@ -392,6 +402,15 @@ final class ReminderScheduler {
                 .putExtra(EXTRA_KEY, tapKey).putExtra(ActionReceiver.EXTRA_ACTION, a).putExtra(ActionReceiver.EXTRA_TAG, tag)
                 .putExtra(ActionReceiver.EXTRA_TITLE, title).putExtra(ActionReceiver.EXTRA_BODY, body);
             PendingIntent api = PendingIntent.getBroadcast(c, (tag + "|" + a).hashCode(), ai, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+            if (A_OFF_THIS.equals(a)) {   // "Turn off this" is an icon at the bottom right, in the section's colour
+                try {
+                    boolean dark = (c.getResources().getConfiguration().uiMode & android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES;
+                    android.graphics.Bitmap bell = art("belloff" + theme.key() + dark, () -> NotificationArt.bellOff(theme, dark));
+                    android.widget.RemoteViews small = offView(c, b, title, body, bell, api, 1), big = offView(c, b, title, body, bell, api, 5);
+                    b.setStyle(new NotificationCompat.DecoratedCustomViewStyle()).setCustomContentView(small).setCustomBigContentView(big).setCustomHeadsUpContentView(small);
+                    continue;
+                } catch (Exception e) { /* the word button instead */ }
+            }
             b.addAction(0, actionLabel(a), api);
         }
         try {

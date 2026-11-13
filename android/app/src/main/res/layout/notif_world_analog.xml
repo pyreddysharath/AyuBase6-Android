@@ -1,17 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- World Clock notification with clock faces (Android 12+): up to 3 cities side by side. -->
+<!-- World Clock notification with clock faces (Android 12+): up to 3 cities side by side; the digits under a face are optional. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:paddingTop="4dp" android:paddingBottom="4dp">
     <LinearLayout android:id="@+id/a1" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:orientation="vertical" android:gravity="center_horizontal">
         <AnalogClock android:id="@+id/a1_clock" android:layout_width="56dp" android:layout_height="56dp" />
         <TextView android:id="@+id/a1_city" android:layout_width="wrap_content" android:layout_height="wrap_content" android:singleLine="true" android:ellipsize="end" android:textAppearance="@style/TextAppearance.Compat.Notification.Info" />
+        <TextClock android:id="@+id/a1_time" android:layout_width="wrap_content" android:layout_height="wrap_content" android:visibility="gone" android:textAppearance="@style/TextAppearance.Compat.Notification.Title" />
     </LinearLayout>
     <LinearLayout android:id="@+id/a2" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:orientation="vertical" android:gravity="center_horizontal">
         <AnalogClock android:id="@+id/a2_clock" android:layout_width="56dp" android:layout_height="56dp" />
         <TextView android:id="@+id/a2_city" android:layout_width="wrap_content" android:layout_height="wrap_content" android:singleLine="true" android:ellipsize="end" android:textAppearance="@style/TextAppearance.Compat.Notification.Info" />
+        <TextClock android:id="@+id/a2_time" android:layout_width="wrap_content" android:layout_height="wrap_content" android:visibility="gone" android:textAppearance="@style/TextAppearance.Compat.Notification.Title" />
     </LinearLayout>
     <LinearLayout android:id="@+id/a3" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:orientation="vertical" android:gravity="center_horizontal">
         <AnalogClock android:id="@+id/a3_clock" android:layout_width="56dp" android:layout_height="56dp" />
         <TextView android:id="@+id/a3_city" android:layout_width="wrap_content" android:layout_height="wrap_content" android:singleLine="true" android:ellipsize="end" android:textAppearance="@style/TextAppearance.Compat.Notification.Info" />
+        <TextClock android:id="@+id/a3_time" android:layout_width="wrap_content" android:layout_height="wrap_content" android:visibility="gone" android:textAppearance="@style/TextAppearance.Compat.Notification.Title" />
     </LinearLayout>
 </LinearLayout>

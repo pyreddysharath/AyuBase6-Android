@@ -155,26 +155,63 @@ final class ClockNotifier {
             if (w.optBoolean("zone", false)) place += " · " + gmt(z.optString("tz"));
             v.setTextViewText(CITY[i], place);
             v.setString(TIME[i], "setTimeZone", z.optString("tz"));
-            v.setCharSequence(TIME[i], "setFormat12Hour", h24 ? "HH:mm" : "h:mm a");
-            v.setCharSequence(TIME[i], "setFormat24Hour", h24 ? "HH:mm" : "h:mm a");
+            CharSequence f = styled(style(w), h24);
+            v.setCharSequence(TIME[i], "setFormat12Hour", f);
+            v.setCharSequence(TIME[i], "setFormat24Hour", f);
+            float sp = "d2".equals(style(w)) ? 24 : "d3".equals(style(w)) || "d4".equals(style(w)) ? 20 : 0;
+            if (sp > 0) v.setTextViewTextSize(TIME[i], android.util.TypedValue.COMPLEX_UNIT_SP, max <= 2 ? Math.min(sp, 18) : sp);   // the closed notification has less room
         }
         return v;
     }
+    /** d1–d4 = digital text styles, f1–f4 = clock faces (older values: "digital", "analog"). */
+    private static String style(JSONObject w) {
+        String s = w.optString("style", "d1");
+        return s.matches("^[df][1-4]$") ? s : "analog".equals(s) ? "f1" : "d1";
+    }
+    /** The time format with its look: regular bold, large and light, heavy, or display digits. */
+    private static CharSequence styled(String style, boolean h24) {
+        String f = h24 ? "HH:mm" : "h:mm a";
+        android.text.SpannableString s = new android.text.SpannableString(f);
+        int all = f.length(), fl = android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE;
+        if ("d2".equals(style)) {
+            s.setSpan(new android.text.style.TypefaceSpan("sans-serif-light"), 0, all, fl);
+            if (!h24) s.setSpan(new android.text.style.RelativeSizeSpan(0.5f), all - 2, all, fl);
+        } else if ("d4".equals(style)) {
+            s.setSpan(new android.text.style.TypefaceSpan("monospace"), 0, all, fl);
+            s.setSpan(new android.text.style.StyleSpan(android.graphics.Typeface.BOLD), 0, all, fl);
+        } else s.setSpan(new android.text.style.StyleSpan(android.graphics.Typeface.BOLD), 0, all, fl);
+        return s;
+    }
 
-    private static final int[] AROW = {R.id.a1, R.id.a2, R.id.a3}, ACLOCK = {R.id.a1_clock, R.id.a2_clock, R.id.a3_clock}, ACITY = {R.id.a1_city, R.id.a2_city, R.id.a3_city};
+    private static final int[] AROW = {R.id.a1, R.id.a2, R.id.a3}, ACLOCK = {R.id.a1_clock, R.id.a2_clock, R.id.a3_clock}, ACITY = {R.id.a1_city, R.id.a2_city, R.id.a3_city}, ATIME = {R.id.a1_time, R.id.a2_time, R.id.a3_time};
+    private static final int[] BROW = {R.id.b1, R.id.b2, R.id.b3}, BCLOCK = {R.id.b1_clock, R.id.b2_clock, R.id.b3_clock}, BCITY = {R.id.b1_city, R.id.b2_city, R.id.b3_city}, BTIME = {R.id.b1_time, R.id.b2_time, R.id.b3_time};
     /** Clock faces, up to three (Android 12+, where a clock face can be set to a time zone). */
     private static RemoteViews worldFaces(Context c, JSONArray list, JSONObject w) {
-        RemoteViews v = new RemoteViews(c.getPackageName(), R.layout.notif_world_analog);
+        String st = style(w), fmt = w.optString("fmt", "phone");
+        boolean rows = "f4".equals(st), digits = rows || "f2".equals(st);
+        boolean h24 = "24".equals(fmt) || (!"12".equals(fmt) && android.text.format.DateFormat.is24HourFormat(c));
+        RemoteViews v = new RemoteViews(c.getPackageName(), rows ? R.layout.notif_world_rows : R.layout.notif_world_analog);
+        final int[] AROW = rows ? BROW : ClockNotifier.AROW, ACLOCK = rows ? BCLOCK : ClockNotifier.ACLOCK, ACITY = rows ? BCITY : ClockNotifier.ACITY, ATIME = rows ? BTIME : ClockNotifier.ATIME;
         String show = w.optString("place", "both");
         for (int i = 0; i < AROW.length; i++) {
             JSONObject z = list.optJSONObject(i);
             if (z == null) { v.setViewVisibility(AROW[i], View.GONE); continue; }
             v.setViewVisibility(AROW[i], View.VISIBLE);
             v.setString(ACLOCK[i], "setTimeZone", z.optString("tz"));
+            v.setViewVisibility(ATIME[i], digits ? View.VISIBLE : View.GONE);
+            if (digits) {
+                CharSequence f = styled("d1", h24);
+                v.setString(ATIME[i], "setTimeZone", z.optString("tz"));
+                v.setCharSequence(ATIME[i], "setFormat12Hour", f); v.setCharSequence(ATIME[i], "setFormat24Hour", f);
+            }
             String place = "country".equals(show) && !z.optString("country").isEmpty() ? z.optString("country") : z.optString("city");
             if (!z.optString("label").isEmpty()) place = z.optString("label");   // the person's own name for this city
             if (w.optBoolean("zone", false)) place += " · " + gmt(z.optString("tz"));
-            v.setTextViewText(ACITY[i], place);
+            if ("f3".equals(st)) {   // a bigger, bolder name
+                android.text.SpannableString bold = new android.text.SpannableString(place);
+                bold.setSpan(new android.text.style.StyleSpan(android.graphics.Typeface.BOLD), 0, place.length(), android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                v.setTextViewText(ACITY[i], bold); v.setTextViewTextSize(ACITY[i], android.util.TypedValue.COMPLEX_UNIT_SP, 15);
+            } else v.setTextViewText(ACITY[i], place);
         }
         return v;
     }
@@ -186,7 +223,7 @@ final class ClockNotifier {
         NotificationCompat.Builder b = base(c, "world").setCategory(NotificationCompat.CATEGORY_STATUS).setContentTitle("World Clock").setShowWhen(false)
             .setStyle(new NotificationCompat.DecoratedCustomViewStyle())
             .setCustomContentView(worldViews(c, list, 2, w))
-            .setCustomBigContentView("analog".equals(w.optString("style")) && Build.VERSION.SDK_INT >= 31 ? worldFaces(c, list, w) : worldViews(c, list, 5, w))
+            .setCustomBigContentView(style(w).startsWith("f") && Build.VERSION.SDK_INT >= 31 ? worldFaces(c, list, w) : worldViews(c, list, 5, w))
             .setPriority(NotificationCompat.PRIORITY_LOW);
         try { nm.notify(ID_WORLD, b.build()); } catch (SecurityException ignored) {}
     }

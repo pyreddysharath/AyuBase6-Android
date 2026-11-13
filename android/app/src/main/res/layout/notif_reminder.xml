@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A reminder with "Turn off this" as an icon at the bottom right (a crossed bell in the section's colour). -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="bottom">
+    <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:orientation="vertical">
+        <TextView android:id="@+id/nr_title" android:layout_width="match_parent" android:layout_height="wrap_content" android:singleLine="true" android:ellipsize="end" android:textAppearance="@style/TextAppearance.Compat.Notification.Title" />
+        <TextView android:id="@+id/nr_text" android:layout_width="match_parent" android:layout_height="wrap_content" android:maxLines="5" android:ellipsize="end" android:textAppearance="@style/TextAppearance.Compat.Notification" />
+    </LinearLayout>
+    <ImageView android:id="@+id/nr_off" android:layout_width="36dp" android:layout_height="36dp" android:layout_marginStart="10dp" android:contentDescription="Turn off this reminder" />
+</LinearLayout>

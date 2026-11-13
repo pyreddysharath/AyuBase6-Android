@@ -70,6 +70,30 @@ final class NotificationArt {
     }
 
     /** Solid section-coloured logo with a white lotus (the web app's notification icon), rounded. */
+    /** "Turn off this": a crossed bell on a soft patch of the section's colour. */
+    static Bitmap bellOff(Theme t, boolean dark) {
+        int s = 144;
+        Bitmap b = Bitmap.createBitmap(s, s, Bitmap.Config.ARGB_8888);
+        Canvas cv = new Canvas(b);
+        int ink = dark ? blend(t.deep, Color.WHITE, 0.55f) : t.deep;
+        Paint bg = new Paint(Paint.ANTI_ALIAS_FLAG);
+        bg.setColor(Color.argb(dark ? 70 : 38, Color.red(ink), Color.green(ink), Color.blue(ink)));
+        cv.drawCircle(s / 2f, s / 2f, s / 2f, bg);
+        Paint w = new Paint(Paint.ANTI_ALIAS_FLAG);
+        w.setColor(ink); w.setStyle(Paint.Style.STROKE); w.setStrokeWidth(2f); w.setStrokeCap(Paint.Cap.ROUND); w.setStrokeJoin(Paint.Join.ROUND);
+        Path p = new Path();   // on a 24 x 24 grid
+        p.moveTo(9.5f, 4.7f); p.cubicTo(11.2f, 3.9f, 13.6f, 3.9f, 15.4f, 5.3f); p.cubicTo(17.1f, 6.5f, 18f, 8.2f, 18f, 10.2f); p.cubicTo(18f, 12.5f, 18.5f, 14.1f, 19.2f, 15.2f);
+        p.moveTo(17f, 17f); p.lineTo(4f, 17f); p.cubicTo(5.5f, 15.5f, 6f, 13.5f, 6f, 10.2f); p.cubicTo(6f, 9.4f, 6.15f, 8.7f, 6.4f, 8f);
+        p.moveTo(10f, 20f); p.cubicTo(10f, 22.6f, 14f, 22.6f, 14f, 20f);
+        p.moveTo(4f, 4f); p.lineTo(20f, 20f);
+        cv.save(); cv.translate(s * 0.21f, s * 0.2f); cv.scale(s * 0.58f / 24f, s * 0.58f / 24f);
+        cv.drawPath(p, w); cv.restore();
+        return b;
+    }
+    private static int blend(int a, int b, float k) {
+        return Color.rgb(Math.round(Color.red(a) + (Color.red(b) - Color.red(a)) * k), Math.round(Color.green(a) + (Color.green(b) - Color.green(a)) * k), Math.round(Color.blue(a) + (Color.blue(b) - Color.blue(a)) * k));
+    }
+
     /** An alarm clock in the section's colour (the note before an alarm rings). */
     static Bitmap alarm(Theme t) {
         int s = 192;
