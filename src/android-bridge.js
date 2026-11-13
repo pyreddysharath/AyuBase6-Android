@@ -472,22 +472,31 @@
       if(state.store === 'play') return;
       var cfg = upd.latest; if(!cfg) return;
       if(laterHidden(cfg.versionCode)) return;
-      if(document.getElementById('ayu-update-card') || document.getElementById('ayu-exact-card')) return;
-      var card = document.createElement('div');
-      card.id = 'ayu-update-card'; card.className = 'ayu-card'; card.setAttribute('role', 'dialog'); card.setAttribute('aria-label', 'Update available');
-      card.innerHTML = '<div class="ayu-ec-text"><b>Update available</b><span>' + (state.selfInstall === false ? 'A new version of AyuBase6 is ready. Tap Update to download it, then open the downloaded file. Your data stays.' : 'A new version of AyuBase6 is ready. Tap Update; your data stays.') + '</span></div>'
-        + '<button type="button" class="ayu-ec-later ayu-ec-x" aria-label="Close" title="Close">×</button><div class="ayu-ec-btns"><button type="button" class="ayu-ec-allow">Update</button></div>';
-      card.querySelector('.ayu-ec-allow').onclick = function(){
-        card.remove(); state.updateStart();
-        setTimeout(function(){   // after this tap (the footer closes on taps outside it)
-          try{ if(typeof window.showFooterSection === 'function'){ window.showFooterSection('backup'); if(typeof window.showFooterSub === 'function') window.showFooterSub('backup', 'app'); var sa = document.getElementById('sec-app'); if(sa) sa.scrollIntoView({ block:'center', behavior:'smooth' }); } }catch(e){}
-        }, 60);
-      };
-      card.querySelector('.ayu-ec-later').onclick = function(){
-        ls(UPD_KEY, JSON.stringify({ closed:true, v:String(cfg.versionCode), at:Date.now() })); card.remove();
-        noteBanner('You can update any time from <b>Backup &amp; Restore → App Updates</b>, in the footer.', 10000);
-      };
-      document.body.appendChild(card);
+      if(document.querySelector('.ayu-upd-banner')) return;
+      // A banner at the top of every tab (not a pop-up): what is new, Update, and × to close
+      var ACC = { activity:'#2563eb', nutrition:'#16a34a', calculator:'var(--calc-2)', alerts:'var(--alert-2)', routines:'var(--rout-2)', mind:'var(--mind-2)' };
+      var all = [];
+      function gone(){ all.forEach(function(b){ b.remove(); }); ls('ayuUpdAck', String(cfg.versionCode)); try{ if(window.ayuDotsEnforce) window.ayuDotsEnforce(); }catch(e){} }   // used: the dots for this update go
+      document.querySelectorAll('.tab-panel').forEach(function(p, i){
+        var b = document.createElement('div'); b.className = 'ayu-appb ayu-upd-banner'; b.setAttribute('role', 'status'); if(!i) b.id = 'ayu-update-card';
+        var tab = (p.id || '').replace(/-panel$/, ''); if(ACC[tab]) b.style.setProperty('--appb-c', ACC[tab]);
+        b.innerHTML = '<div class="appb-tx"><b class="appb-t">Update available' + (cfg.versionName ? ': version ' + String(cfg.versionName).replace(/[<>&]/g, '') : '') + '</b>'
+          + (state.selfInstall === false ? 'Tap Update to download it, then open the downloaded file. Your data stays.' : 'Tap Update; your data stays.')
+          + '<div class="appb-btns"><button type="button" class="appb-get ayu-ec-allow">Update</button></div></div>'
+          + '<button type="button" class="appb-x ayu-ec-later" aria-label="Close" title="Close">×</button>';
+        b.querySelector('.ayu-ec-allow').addEventListener('click', function(){
+          gone(); state.updateStart();
+          setTimeout(function(){   // after this tap (the footer closes on taps outside it)
+            try{ if(typeof window.showFooterSection === 'function'){ window.showFooterSection('backup'); if(typeof window.showFooterSub === 'function') window.showFooterSub('backup', 'app'); var sa = document.getElementById('sec-app'); if(sa) sa.scrollIntoView({ block:'center', behavior:'smooth' }); } }catch(e){}
+          }, 60);
+        });
+        b.querySelector('.ayu-ec-later').addEventListener('click', function(){
+          ls(UPD_KEY, JSON.stringify({ closed:true, v:String(cfg.versionCode), at:Date.now() })); gone();
+          noteBanner('You can update any time from <b>Backup &amp; Restore → App Updates</b>, in the footer.', 10000);
+        });
+        var ann = p.querySelector(':scope > .ayu-ann'); if(ann) ann.after(b); else p.insertBefore(b, p.firstChild);
+        all.push(b);
+      });
     });
   }
 
