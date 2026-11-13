@@ -19,6 +19,9 @@ public class ActionReceiver extends BroadcastReceiver {
         if (ReminderScheduler.A_SNOOZE_OFF.equals(action) && key != null) {   // "Stop alarm" on the Snoozed note
             ReminderScheduler.cancelAlarmSnooze(app, key); AyuRemindersPlugin.alarmChanged(); return;
         }
+        if (ReminderScheduler.A_EYES_START.equals(action) && tag != null) {   // Eyes (20-20-20): Start begins the countdown (also on a Preview)
+            ReminderScheduler.eyesStart(app, tag, title); return;
+        }
         if (key != null && key.startsWith("preview:")) { ReminderScheduler.cancel(app, tag); return; }   // a button on a Preview notification: just close it
         final PendingResult done = goAsync();
         new Thread(() -> {

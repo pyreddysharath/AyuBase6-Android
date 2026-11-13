@@ -316,6 +316,7 @@ final class ReminderScheduler {
     static final String A_DONE = "done", A_NOT_YET = "not-yet", A_OFF_THIS = "disable-this", A_OFF_ALL = "disable-all";
     static String[] actionsFor(String key) {
         if (key.startsWith("routine-")) return new String[]{A_DONE, A_NOT_YET};
+        if ("break".equals(key)) return new String[]{A_EYES_START, A_OFF_THIS};   // Eyes (20-20-20): Start begins the 20-second countdown
         if (key.matches("^(break|walk|drink|eyeex|posture|stretch|breathe|stand)$")) return new String[]{A_OFF_THIS};   // "Turn off all" was dropped: one wrong tap silenced everything
         return new String[0];   // My Reminders: no buttons, as on the website
     }
@@ -323,6 +324,7 @@ final class ReminderScheduler {
         switch (a) {
             case A_DONE: return "✓ Done";
             case A_NOT_YET: return "Not yet";
+            case A_EYES_START: return "▶ Start";
             case A_OFF_THIS: return "Turn off this";
             default: return "Turn off all";
         }
@@ -385,10 +387,6 @@ final class ReminderScheduler {
         if (!silent && !vibrate) b.setVibrate(new long[]{0});   // Android 7 and older
         boolean checks = tapKey != null && (tapKey.startsWith("routine-") || tapKey.startsWith("alarm-"));
         if (checks) { b.setShowWhen(false); b.setContentTitle(noTime(title)); }   // the time is not repeated on the notification
-        if ("break".equals(tapKey) && !silent) {   // Eyes (20-20-20): the 20 seconds count down on the notification itself
-            b.setUsesChronometer(true).setChronometerCountDown(true).setWhen(System.currentTimeMillis() + 20000L).setShowWhen(true);
-            eyesDone(c, tag, title, theme, section);
-        }
         for (String a : actions) {
             Intent ai = new Intent(c, ActionReceiver.class).setAction("com.ayubase6.app.ACTION." + a)
                 .putExtra(EXTRA_KEY, tapKey).putExtra(ActionReceiver.EXTRA_ACTION, a).putExtra(ActionReceiver.EXTRA_TAG, tag)
@@ -599,7 +597,29 @@ final class ReminderScheduler {
     static void cancel(Context c, String tag) { NotificationManagerCompat.from(c).cancel(idFor(tag)); }
 
     // ── Eyes (20-20-20): when the 20 seconds are over the same notification says so, quietly ──
-    static final String A_EYES_DONE = "com.ayubase6.app.EYES_DONE";
+    static final String A_EYES_DONE = "com.ayubase6.app.EYES_DONE", A_EYES_START = "eyes-start";
+    /** Start was tapped: the same notification now counts the 20 seconds down, quietly, then says they are done. */
+    static void eyesStart(Context c, String tag, String title) {
+        ensureChannels(c);
+        NotificationManagerCompat nm = NotificationManagerCompat.from(c);
+        if (!nm.areNotificationsEnabled()) return;
+        NotificationArt.Theme theme = NotificationArt.REMINDERS;
+        Intent open = new Intent(c, MainActivity.class).setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            .putExtra(EXTRA_KEY, "break").putExtra(EXTRA_SECTION, "alerts");
+        PendingIntent pi = PendingIntent.getActivity(c, idFor(tag), open, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        NotificationCompat.Builder b = new NotificationCompat.Builder(c, CHANNEL_UPDATES)
+            .setSmallIcon(R.drawable.ic_stat_lotus)
+            .setContentTitle(title == null || title.isEmpty() ? "Eyes" : title)
+            .setContentText("Look 20 feet away until the time runs out.")
+            .setLargeIcon(art("logo" + theme.key(), () -> NotificationArt.logo(theme)))
+            .setColor(theme.deep).setContentIntent(pi).setAutoCancel(true)
+            .setOnlyAlertOnce(true).setSilent(true)
+            .setUsesChronometer(true).setChronometerCountDown(true).setWhen(System.currentTimeMillis() + 20000L).setShowWhen(true)
+            .setCategory(NotificationCompat.CATEGORY_PROGRESS).setPriority(NotificationCompat.PRIORITY_LOW)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC);
+        try { nm.notify(idFor(tag), b.build()); } catch (SecurityException ignored) {}
+        eyesDone(c, tag, title, theme, "alerts");
+    }
     private static void eyesDone(Context c, String tag, String title, NotificationArt.Theme theme, String section) {
         try {
             AlarmManager am = (AlarmManager) c.getSystemService(Context.ALARM_SERVICE);
