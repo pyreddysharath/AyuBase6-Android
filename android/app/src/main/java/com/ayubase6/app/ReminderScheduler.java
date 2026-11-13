@@ -184,8 +184,9 @@ final class ReminderScheduler {
             JSONObject o = sn.optJSONObject(i); if (o == null) continue;
             long t = o.optLong("t");
             if (t > now) { keep.put(o); continue; }
-            if (o.optBoolean("alarm", false) && now - t <= 2 && AlarmService.config(c, o.optString("key")) != null
-                    && AlarmService.start(c, o.optString("key"), o.optString("title"), o.optString("body"), o.optInt("count", 1))) continue;
+            if (o.optBoolean("alarm", false)) cancel(c, SNOOZE_TAG + o.optString("key"));   // the "Snoozed" note goes: it rings now
+            if (o.optBoolean("alarm", false) && now - t <= 2 && (o.has("cfg") || AlarmService.config(c, o.optString("key")) != null)
+                    && AlarmService.startSnoozed(c, o.optString("key"), o.optString("title"), o.optString("body"), o.optInt("count", 1), o.optString("cfg", ""))) continue;
             if (now - t <= MAX_LATE_MIN) {
                 String k = o.optString("key");
                 String sec = k.startsWith("alarm-rem") ? "alerts" : "routines";   // Reminders alarms: "rem", "rem-<id>"
@@ -309,6 +310,12 @@ final class ReminderScheduler {
             .setPriority(silent ? NotificationCompat.PRIORITY_LOW : NotificationCompat.PRIORITY_HIGH)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC);
         if (!silent && !vibrate) b.setVibrate(new long[]{0});   // Android 7 and older
+        boolean checks = tapKey != null && (tapKey.startsWith("routine-") || tapKey.startsWith("alarm-"));
+        if (checks) { b.setShowWhen(false); b.setContentTitle(noTime(title)); }   // the time is not repeated on the notification
+        if ("break".equals(tapKey) && !silent) {   // Eyes (20-20-20): the 20 seconds count down on the notification itself
+            b.setUsesChronometer(true).setChronometerCountDown(true).setWhen(System.currentTimeMillis() + 20000L).setShowWhen(true);
+            eyesDone(c, tag, title, theme, section);
+        }
         for (String a : actions) {
             Intent ai = new Intent(c, ActionReceiver.class).setAction("com.ayubase6.app.ACTION." + a)
                 .putExtra(EXTRA_KEY, tapKey).putExtra(ActionReceiver.EXTRA_ACTION, a).putExtra(ActionReceiver.EXTRA_TAG, tag)
@@ -431,16 +438,82 @@ final class ReminderScheduler {
         }
     }
 
-    /** Snooze on a ringing alarm: ring again after `minutes`; `count` snoozes used so far. */
-    static void addAlarmSnooze(Context c, String key, String title, String body, int count, int minutes) {
+    /** Snooze on a ringing alarm: ring again after `minutes`; `count` snoozes used so far. A quiet note says when it rings next. */
+    static final String SNOOZE_TAG = "snz-", A_SNOOZE_OFF = "snooze-off";
+    static void addAlarmSnooze(Context c, String key, String title, String body, int count, int minutes, JSONObject cfg, String section) {
+        long at = System.currentTimeMillis() / 60000L + minutes;
         try {
             org.json.JSONArray sn = snoozes(c), keep = new org.json.JSONArray();
             for (int i = 0; i < sn.length(); i++) { JSONObject o = sn.optJSONObject(i); if (o != null && !key.equals(o.optString("key"))) keep.put(o); }
-            keep.put(new JSONObject().put("t", System.currentTimeMillis() / 60000L + minutes).put("key", key)
-                .put("title", title).put("body", body).put("alarm", true).put("count", count));
+            JSONObject e = new JSONObject().put("t", at).put("key", key)
+                .put("title", title).put("body", body).put("alarm", true).put("count", count);
+            if (cfg != null && cfg.length() > 0) e.put("cfg", cfg.toString());
+            keep.put(e);
             saveSnoozes(c, keep);
         } catch (Exception ignored) {}
         reschedule(c);
+        showSnoozed(c, key, title, at * 60000L, section);
+    }
+
+    /** "Snoozed · rings at 7:10 AM", with a countdown; stays until it rings or the alarm is stopped. Tapping it opens that alarm. */
+    static void showSnoozed(Context c, String key, String title, long atMs, String section) {
+        ensureChannels(c);
+        NotificationManagerCompat nm = NotificationManagerCompat.from(c);
+        if (!nm.areNotificationsEnabled()) return;
+        String tag = SNOOZE_TAG + key;
+        NotificationArt.Theme theme = NotificationArt.forSection(section);
+        Intent open = new Intent(c, MainActivity.class).setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            .putExtra(EXTRA_KEY, key).putExtra(EXTRA_SECTION, section == null ? "" : section);
+        PendingIntent pi = PendingIntent.getActivity(c, idFor(tag), open, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        Intent off = new Intent(c, ActionReceiver.class).setAction("com.ayubase6.app.ACTION." + A_SNOOZE_OFF)
+            .putExtra(EXTRA_KEY, key).putExtra(ActionReceiver.EXTRA_ACTION, A_SNOOZE_OFF).putExtra(ActionReceiver.EXTRA_TAG, tag);
+        PendingIntent offPi = PendingIntent.getBroadcast(c, (tag + "|off").hashCode(), off, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        String when = java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).format(new java.util.Date(atMs));
+        NotificationCompat.Builder b = new NotificationCompat.Builder(c, CHANNEL_UPDATES)
+            .setSmallIcon(R.drawable.ic_stat_lotus)
+            .setContentTitle("⏰ " + noTime(title))
+            .setContentText("Snoozed · rings at " + when)
+            .setLargeIcon(art("logo" + theme.key(), () -> NotificationArt.logo(theme)))
+            .setColor(theme.deep)
+            .setContentIntent(pi)
+            .setOngoing(true).setAutoCancel(false).setOnlyAlertOnce(true).setSilent(true)
+            .setUsesChronometer(true).setChronometerCountDown(true).setWhen(atMs).setShowWhen(true)
+            .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .addAction(0, "Stop alarm", offPi);
+        try { nm.notify(idFor(tag), b.build()); } catch (SecurityException ignored) {}
+    }
+
+    /** The alarm was switched off or deleted in the app, or "Stop alarm" was tapped on its note: it does not ring again. */
+    static void cancelAlarmSnooze(Context c, String key) {
+        org.json.JSONArray sn = snoozes(c), keep = new org.json.JSONArray();
+        boolean had = false;
+        for (int i = 0; i < sn.length(); i++) {
+            JSONObject o = sn.optJSONObject(i); if (o == null) continue;
+            if (o.optBoolean("alarm", false) && key.equals(o.optString("key"))) { had = true; continue; }
+            keep.put(o);
+        }
+        cancel(c, SNOOZE_TAG + key);
+        if (had) { saveSnoozes(c, keep); reschedule(c); }
+    }
+
+    /** Snoozed alarms and the time each rings next: {"alarm-<id>": ms}. */
+    static JSONObject snoozedAlarms(Context c) {
+        JSONObject r = new JSONObject();
+        long now = System.currentTimeMillis() / 60000L;
+        org.json.JSONArray sn = snoozes(c);
+        for (int i = 0; i < sn.length(); i++) {
+            JSONObject o = sn.optJSONObject(i);
+            if (o == null || !o.optBoolean("alarm", false) || o.optLong("t") <= now) continue;
+            try { r.put(o.optString("key"), o.optLong("t") * 60000L); } catch (Exception ignored) {}
+        }
+        return r;
+    }
+
+    /** "Gym · 7:15 AM" → "Gym": the notification itself says when. */
+    static String noTime(String title) {
+        return title == null ? "" : title.replaceFirst("\\s*·\\s*\\d{1,2}:\\d{2}(\\s*[AaPp][Mm])?\\s*$", "");
     }
 
     private static void dropSnooze(Context c, String key) {
@@ -450,4 +523,29 @@ final class ReminderScheduler {
     }
 
     static void cancel(Context c, String tag) { NotificationManagerCompat.from(c).cancel(idFor(tag)); }
+
+    // ── Eyes (20-20-20): when the 20 seconds are over the same notification says so, quietly ──
+    static final String A_EYES_DONE = "com.ayubase6.app.EYES_DONE";
+    private static void eyesDone(Context c, String tag, String title, NotificationArt.Theme theme, String section) {
+        try {
+            AlarmManager am = (AlarmManager) c.getSystemService(Context.ALARM_SERVICE);
+            if (am == null) return;
+            Intent i = new Intent(c, ActionReceiver.class).setAction(A_EYES_DONE)
+                .putExtra(ActionReceiver.EXTRA_TAG, tag).putExtra(ActionReceiver.EXTRA_TITLE, title).putExtra(EXTRA_SECTION, section == null ? "" : section);
+            PendingIntent pi = PendingIntent.getBroadcast(c, 7050, i, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+            long at = System.currentTimeMillis() + 20500L;
+            if (canExact(c)) am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi); else am.set(AlarmManager.RTC_WAKEUP, at, pi);
+        } catch (Exception ignored) {}
+    }
+    /** The 20 seconds are over (only if the notification is still there). */
+    static void eyesFinished(Context c, String tag, String title, String section) {
+        try {
+            NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
+            if (nm == null) return;
+            boolean there = false;
+            for (android.service.notification.StatusBarNotification s : nm.getActiveNotifications()) if (s.getId() == idFor(tag)) there = true;
+            if (!there) return;
+            show(c, tag, title, "✓ 20 seconds done. Back to your screen.", true, NotificationArt.forSection(section), section, "break");
+        } catch (Exception ignored) {}
+    }
 }

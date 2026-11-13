@@ -34,3 +34,6 @@
 # Readable stack traces in crash reports, while names stay obfuscated
 -keepattributes SourceFile,LineNumberTable
 -renamesourcefileattribute SourceFile
+
+# Shrink only: class and method names stay readable (no obfuscation)
+-dontobfuscate

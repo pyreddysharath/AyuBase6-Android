@@ -13,6 +13,12 @@ public class ActionReceiver extends BroadcastReceiver {
         final Context app = context.getApplicationContext();
         final String key = intent.getStringExtra(ReminderScheduler.EXTRA_KEY), action = intent.getStringExtra(EXTRA_ACTION);
         final String tag = intent.getStringExtra(EXTRA_TAG), title = intent.getStringExtra(EXTRA_TITLE), body = intent.getStringExtra(EXTRA_BODY);
+        if (ReminderScheduler.A_EYES_DONE.equals(intent.getAction())) {   // Eyes (20-20-20): the countdown is over
+            ReminderScheduler.eyesFinished(app, tag, title, intent.getStringExtra(ReminderScheduler.EXTRA_SECTION)); return;
+        }
+        if (ReminderScheduler.A_SNOOZE_OFF.equals(action) && key != null) {   // "Stop alarm" on the Snoozed note
+            ReminderScheduler.cancelAlarmSnooze(app, key); AyuRemindersPlugin.alarmChanged(); return;
+        }
         if (key != null && key.startsWith("preview:")) { ReminderScheduler.cancel(app, tag); return; }   // a button on a Preview notification: just close it
         final PendingResult done = goAsync();
         new Thread(() -> {

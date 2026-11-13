@@ -59,6 +59,9 @@ public class AlarmService extends Service {
     private BroadcastReceiver volChange;   // a volume button changed the alarm volume (when no screen of ours gets the key)
     private int alarmVol = -1;
     private long buttonsFrom = 0;          // ignore presses in the first moment (the screen may be switching)
+    private Runnable screenWatch;          // the power button, also on phones that send "screen off" late or not at all
+    private boolean wasOn = true;
+    private final java.util.Map<Integer, Integer> vols = new java.util.HashMap<>();   // every volume when the ringing began
     private boolean answered = false;
     String key = "", title = "", body = "";
     int count = 0;
@@ -116,6 +119,20 @@ public class AlarmService extends Service {
             return true;
         } catch (Exception e) {
             Log.w(ReminderScheduler.TAG, "alarm preview could not start", e);
+            return false;
+        }
+    }
+
+    /** A snoozed alarm rings again with the settings it had when it was snoozed. */
+    static boolean startSnoozed(Context c, String key, String title, String body, int count, String cfg) {
+        Intent i = new Intent(c, AlarmService.class).setAction(A_START)
+            .putExtra(EX_KEY, key).putExtra(EX_TITLE, title).putExtra(EX_BODY, body).putExtra(EX_COUNT, count);
+        if (cfg != null && !cfg.isEmpty()) i.putExtra(EX_CFG, cfg);
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) c.startForegroundService(i); else c.startService(i);
+            return true;
+        } catch (Exception e) {
+            AlarmLog.add(c, "startfail:" + key + ":" + e.getClass().getSimpleName());
             return false;
         }
     }
@@ -198,7 +215,7 @@ public class AlarmService extends Service {
     /** Volume buttons and the lock screen (power) button while it rings, also for a preview and without the alarm screen. */
     private void startButtons() {
         stopButtons();
-        buttonsFrom = System.currentTimeMillis() + 1500;
+        buttonsFrom = System.currentTimeMillis() + (preview ? 400 : 1500);   // a preview has no screen change to wait for
         try {
             session = new MediaSession(this, "AyuBase6Alarm");
             session.setPlaybackToRemote(new VolumeProvider(VolumeProvider.VOLUME_CONTROL_RELATIVE, 10, 5) {
@@ -210,11 +227,20 @@ public class AlarmService extends Service {
         try {
             final android.media.AudioManager am = (android.media.AudioManager) getSystemService(AUDIO_SERVICE);
             alarmVol = am != null ? am.getStreamVolume(android.media.AudioManager.STREAM_ALARM) : -1;
+            vols.clear();
+            if (am != null) for (int st : new int[]{android.media.AudioManager.STREAM_ALARM, android.media.AudioManager.STREAM_MUSIC,
+                    android.media.AudioManager.STREAM_RING, android.media.AudioManager.STREAM_NOTIFICATION}) {
+                try { vols.put(st, am.getStreamVolume(st)); } catch (Exception ignored) {}
+            }
+            // Which volume the buttons move differs from phone to phone (alarm, media or ring): any of them counts, and is put back
             volChange = new BroadcastReceiver() { @Override public void onReceive(Context c, Intent i) {
-                if (am == null || i.getIntExtra("android.media.EXTRA_VOLUME_STREAM_TYPE", -1) != android.media.AudioManager.STREAM_ALARM) return;
-                int now = am.getStreamVolume(android.media.AudioManager.STREAM_ALARM);
-                if (alarmVol < 0 || now == alarmVol) return;
-                try { am.setStreamVolume(android.media.AudioManager.STREAM_ALARM, alarmVol, 0); } catch (Exception ignored) {}   // keep the person's alarm volume
+                if (am == null) return;
+                int st = i.getIntExtra("android.media.EXTRA_VOLUME_STREAM_TYPE", -1);
+                Integer was = vols.get(st);
+                if (was == null) return;
+                int now = am.getStreamVolume(st);
+                if (now == was) return;
+                try { am.setStreamVolume(st, was, 0); } catch (Exception ignored) {}   // keep the person's volume
                 pressed("volume");
             } };
             IntentFilter vf = new IntentFilter("android.media.VOLUME_CHANGED_ACTION");
@@ -225,9 +251,23 @@ public class AlarmService extends Service {
             IntentFilter f = new IntentFilter(Intent.ACTION_SCREEN_OFF);
             if (Build.VERSION.SDK_INT >= 33) registerReceiver(screenOff, f, Context.RECEIVER_NOT_EXPORTED); else registerReceiver(screenOff, f);
         } catch (Exception e) { screenOff = null; }
+        // The same button, seen directly: the screen was on and is now off
+        try {
+            final PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
+            wasOn = pm == null || pm.isInteractive();
+            screenWatch = new Runnable() { @Override public void run() {
+                if (screenWatch != this) return;
+                boolean on = pm == null || pm.isInteractive();
+                if (wasOn && !on) pressed("lock");
+                wasOn = on;
+                main.postDelayed(this, 250);
+            } };
+            main.postDelayed(screenWatch, 250);
+        } catch (Exception e) { screenWatch = null; }
     }
 
     private void stopButtons() {
+        if (screenWatch != null) { main.removeCallbacks(screenWatch); screenWatch = null; }
         try { if (session != null) { session.setActive(false); session.release(); } } catch (Exception ignored) {}
         session = null;
         try { if (screenOff != null) unregisterReceiver(screenOff); } catch (Exception ignored) {}
@@ -326,7 +366,8 @@ public class AlarmService extends Service {
         PendingIntent full = PendingIntent.getActivity(this, 7302, open, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         NotificationCompat.Builder b = new NotificationCompat.Builder(this, CHANNEL_ALARMS)
             .setSmallIcon(R.drawable.ic_stat_lotus)
-            .setContentTitle("⏰ " + title)
+            .setContentTitle("⏰ " + ReminderScheduler.noTime(title))
+            .setShowWhen(false)
             .setContentText(body)
             .setStyle(new NotificationCompat.BigTextStyle().bigText(body))
             .setColor(theme().deep)
@@ -349,8 +390,9 @@ public class AlarmService extends Service {
     // ── what the buttons (notification, alarm screen, volume keys) do ──
     void snooze() {
         if (preview || !canSnooze()) { stopAll(); return; }
-        ReminderScheduler.addAlarmSnooze(this, key, title, body, count + 1, snoozeMin());
+        ReminderScheduler.addAlarmSnooze(this, key, title, body, count + 1, snoozeMin(), cfg, section());
         stopAll();
+        AyuRemindersPlugin.alarmChanged();
     }
 
     void done() {

@@ -51,15 +51,18 @@ final class ClockNotifier {
         Intent i = new Intent(c, ClockReceiver.class).setAction(ClockReceiver.PREFIX + a);
         return PendingIntent.getBroadcast(c, code, i, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
     }
-    private static PendingIntent open(Context c) {
-        Intent i = new Intent(c, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP).putExtra("ayu_open", "clock");
-        return PendingIntent.getActivity(c, 7420, i, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+    /** Tapping a Clock notification opens Reminders → Clock on its tab (timer, stopwatch or world). */
+    private static PendingIntent open(Context c, String part) {
+        Intent i = new Intent(c, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            .putExtra(ReminderScheduler.EXTRA_KEY, part).putExtra(ReminderScheduler.EXTRA_SECTION, "clock");
+        return PendingIntent.getActivity(c, 7420 + ("timer".equals(part) ? 0 : "stopwatch".equals(part) ? 1 : 2), i, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
     }
-    private static NotificationCompat.Builder base(Context c) {
+    private static NotificationCompat.Builder base(Context c) { return base(c, "timer"); }
+    private static NotificationCompat.Builder base(Context c, String part) {
         return new NotificationCompat.Builder(c, CH).setSmallIcon(R.drawable.ic_stat_lotus).setColor(NotificationArt.REMINDERS.deep)
             .setOnlyAlertOnce(true).setSilent(true).setOngoing(true).setAutoCancel(false)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC).setCategory(NotificationCompat.CATEGORY_STOPWATCH)
-            .setContentIntent(open(c));
+            .setContentIntent(open(c, part));
     }
 
     /** Shows / updates / removes all Clock notifications and sets the timer's alarm. */
@@ -110,7 +113,7 @@ final class ClockNotifier {
         JSONArray laps = s.optJSONArray("laps");
         int n = laps == null ? 0 : laps.length();
         long el = ClockKit.swElapsed(s, now);
-        NotificationCompat.Builder b = base(c).setContentTitle("⏱ Stopwatch");
+        NotificationCompat.Builder b = base(c, "stopwatch").setContentTitle("⏱ Stopwatch");
         String lapTxt = n == 0 ? "" : (n == 1 ? "1 lap" : n + " laps");
         if ("running".equals(run)) {
             b.setUsesChronometer(true).setWhen(now - el).setShowWhen(true).setContentText(lapTxt.isEmpty() ? "Running" : lapTxt)
@@ -146,7 +149,7 @@ final class ClockNotifier {
         NotificationManagerCompat nm = NotificationManagerCompat.from(c);
         JSONArray list = w.optJSONArray("list");
         if (!w.optBoolean("on", false) || list == null || list.length() == 0) { nm.cancel(ID_WORLD); return; }
-        NotificationCompat.Builder b = base(c).setCategory(NotificationCompat.CATEGORY_STATUS).setContentTitle("World Clock").setShowWhen(false)
+        NotificationCompat.Builder b = base(c, "world").setCategory(NotificationCompat.CATEGORY_STATUS).setContentTitle("World Clock").setShowWhen(false)
             .setStyle(new NotificationCompat.DecoratedCustomViewStyle())
             .setCustomContentView(worldViews(c, list, 2)).setCustomBigContentView(worldViews(c, list, 5))
             .setPriority(NotificationCompat.PRIORITY_LOW);

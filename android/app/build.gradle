@@ -29,8 +29,8 @@ android {
     }
     buildFeatures { buildConfig = true }
     // Two versions of the same app (same app ID and signing key, so one can update the other):
-    //   website: the APK on ayubase6.com, which updates itself (downloads the new APK, opens Android's install screen)
-    //   play:    the Google Play bundle; Google Play updates it, so no self-update and no "install apps" permission
+    //   website: the APK on ayubase6.com; it says when a new version is ready and the download opens in the browser
+    //   play:    the Google Play bundle; Google Play updates it
     flavorDimensions = ["store"]
     productFlavors {
         website { dimension "store" }
@@ -47,7 +47,8 @@ android {
     buildTypes {
         release {
             if (System.getenv("RELEASE_KEYSTORE")) signingConfig signingConfigs.release
-            // Shrink and obfuscate the release APK (harder to read if someone unpacks it); debug builds stay plain
+            // Shrink the release APK (unused code removed). Names are NOT obfuscated (proguard-rules.pro: -dontobfuscate):
+            // an obfuscated APK from outside Google Play is more likely to be flagged by Play Protect.
             minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }

@@ -247,7 +247,7 @@
     if(!list.length) return rules;
     if(!rules) rules = { v:1, tz:(function(){ try{ return Intl.DateTimeFormat().resolvedOptions().timeZone; }catch(e){ return ''; } })(), phone:true, reminders:[], exercise:null, checks:null, custom:[] };
     rules.alarms = list;
-    try{ rules.alarmTap = localStorage.getItem('ayuAlarmTap') === 'clock' ? 'clock' : 'app'; }catch(e){}   // what tapping the phone's time opens
+    try{ rules.alarmTap = localStorage.getItem('ayuAlarmTap') === 'app' ? 'app' : 'clock'; }catch(e){}   // what tapping the phone's time opens (the phone's Clock unless AyuBase6 is chosen)
     return rules;
   }
   state.previewTone = function(tone){ return P.previewTone({ tone:String(tone || 'rise') }); };
@@ -283,7 +283,7 @@
   // Settings → Notifications button: Android lets only its own settings page turn the permission on or off
   state.previewAlarm = function(o){ return typeof P.previewAlarm === 'function' ? P.previewAlarm(o || {}) : Promise.reject(new Error('old app')); };
   state.openNotifSettings = function(){ return P.openNotificationSettings().catch(noop); };
-  // Settings → Disable Notifications: Android 13+ gives up the permission (the app closes); older phones open the settings page
+  // Settings → Block notifications: Android 13+ gives up the permission (the app closes); older phones open the settings page
   if(typeof P.disableNotifications === 'function') state.disableNotifs = function(){ return P.disableNotifications(); };
   // Help's check: ringer, volumes, Do Not Disturb, channels, exact alarms, battery, a force stop when the app was last closed
   if(typeof P.soundCheck === 'function') state.soundCheck = function(){ return P.soundCheck(); };
@@ -307,9 +307,18 @@
     state.backupLoad = function(){ return P.backupLoad(); };
     state.backupClear = function(){ return typeof P.backupClear === 'function' ? P.backupClear() : Promise.resolve(); };
   }
+  state.snoozed = {};
+  state.snoozeCancel = function(key){ try{ delete state.snoozed[key]; }catch(e){} return typeof P.snoozeCancel === 'function' ? P.snoozeCancel({ key:String(key || '') }).catch(noop) : Promise.resolve(); };
+  function setSnoozed(o){
+    o = (o && typeof o === 'object') ? o : {};
+    if(JSON.stringify(o) === JSON.stringify(state.snoozed)) return;
+    state.snoozed = o; try{ window.dispatchEvent(new Event('ayu-alarm-snoozed')); }catch(e){}
+  }
+  try{ P.addListener('alarmChanged', function(){ refreshStatus(); }); }catch(e){}
   function refreshStatus(){
     return P.checkPermissions().then(function(r){
       setPerm(mapPerm(r && r.notifications));
+      setSnoozed(r && r.snoozed);
       var ex = !(r && r.exactAlarm === false);
       if(ex !== state.exact){ state.exact = ex; sync(true); }
       showExactCard(); showBlockedCard();
@@ -392,7 +401,7 @@
   state.updateChecksSet = function(n){ return P.updateChecksSet({ times:+n }); };
   // Which version this is: "website" (updates itself from ayubase6.com) or "play" (Google Play updates it)
   var PLAY_URL = 'https://play.google.com/store/apps/details?id=com.ayubase6.app';
-  var storeP = P.getStatus().then(function(st){ return String((st && st.store) || 'website'); }, function(){ return 'website'; })
+  var storeP = P.getStatus().then(function(st){ if(st && st.selfInstall === false){ state.selfInstall = false; upd.viaBrowser = true; } return String((st && st.store) || 'website'); }, function(){ return 'website'; })
     .then(function(s){ state.store = upd.store = s; if(s === 'play'){ upd.latest = null; updEvent(); } return s; });
   state.updateCheck = function(){
     if(state.store === 'play'){ upd.error = ''; upd.phase = ''; upd.latest = null; upd.checkedAt = Date.now(); updEvent(); return Promise.resolve(upd); }
@@ -425,7 +434,9 @@
   state.updateStart = function(){
     if(state.store === 'play'){ P.openUrl({ url:PLAY_URL }).catch(noop); return Promise.resolve(); }   // Google Play installs the updates
     var cfg = upd.latest; if(!cfg) return Promise.resolve();
-    if(typeof P.updateDownload !== 'function'){ P.openUrl({ url:cfg.url }).catch(noop); return Promise.resolve(); }   // an app without it: the browser
+    if(state.selfInstall === false || typeof P.updateDownload !== 'function'){   // no installer in the app: the browser downloads it, the person opens the file
+      P.openUrl({ url:String(cfg.url) }).catch(noop); upd.phase = ''; upd.browserAt = Date.now(); updEvent(); return Promise.resolve();
+    }
     if(upd.phase === 'downloading') return Promise.resolve();
     upd.phase = 'downloading'; upd.pct = 0; upd.error = ''; updEvent();
     return P.updateDownload({ url:String(cfg.url) }).then(function(){
@@ -440,12 +451,12 @@
   };
   // × on the progress bar: stop the download (the part already downloaded is deleted)
   var installOnReturn = false;
-  if(typeof P.updateCancel === 'function') state.updateCancel = function(){ return P.updateCancel().catch(noop); };
+  storeP.then(function(){ if(state.selfInstall !== false && typeof P.updateCancel === 'function') state.updateCancel = function(){ return P.updateCancel().catch(noop); }; });
   try{ P.addListener('updateProgress', function(d){ upd.pct = Math.max(0, Math.min(100, +(d && d.pct) || 0)); updEvent(); }); }catch(e){}
   document.addEventListener('visibilitychange', function(){
     if(document.hidden) return;
     if(installOnReturn){ installOnReturn = false; setTimeout(openInstaller, 300); }
-    if(waitAllow && typeof P.updateCanInstall === 'function'){
+    if(waitAllow && state.selfInstall !== false && typeof P.updateCanInstall === 'function'){
       P.updateCanInstall().then(function(r){ if(r && r.allowed && r.ready){ waitAllow = false; openInstaller(); } }).catch(noop);
     }
     if(upd.phase === 'installing'){ upd.phase = ''; updEvent(); }   // back from Android's screen without updating
@@ -459,7 +470,7 @@
       if(document.getElementById('ayu-update-card') || document.getElementById('ayu-exact-card')) return;
       var card = document.createElement('div');
       card.id = 'ayu-update-card'; card.className = 'ayu-card'; card.setAttribute('role', 'dialog'); card.setAttribute('aria-label', 'Update available');
-      card.innerHTML = '<div class="ayu-ec-text"><b>Update available</b><span>A new version of AyuBase6 is ready. Tap Update; your data stays.</span></div>'
+      card.innerHTML = '<div class="ayu-ec-text"><b>Update available</b><span>' + (state.selfInstall === false ? 'A new version of AyuBase6 is ready. Tap Update to download it, then open the downloaded file. Your data stays.' : 'A new version of AyuBase6 is ready. Tap Update; your data stays.') + '</span></div>'
         + '<button type="button" class="ayu-ec-later ayu-ec-x" aria-label="Close" title="Close">×</button><div class="ayu-ec-btns"><button type="button" class="ayu-ec-allow">Update</button></div>';
       card.querySelector('.ayu-ec-allow').onclick = function(){
         card.remove(); state.updateStart();
@@ -534,6 +545,11 @@
     if(!ready){ pendingTap = d; return; }
     var key = String(d && d.key || ''), section = String(d && d.section || '');
     if(/^alarm-[a-z]+$/.test(key) && typeof window.ayuShowAlarm === 'function'){ window.ayuShowAlarm(key.slice(6)); return; }   // the phone's next-alarm tap
+    if(section === 'clock'){
+      try{ if(typeof switchTab === 'function') switchTab('alerts'); if(window.ayuRemTab) window.ayuRemTab('alarm'); if(window.ayuClockTab) window.ayuClockTab(/^(timer|stopwatch|world)$/.test(key) ? key : 'timer');
+        setTimeout(function(){ var c = document.getElementById('rem-alarm-card'); if(c) c.scrollIntoView({ block:'start', behavior:'smooth' }); }, 200); }catch(e){}
+      return;
+    }
     if(section === 'alerts' || section === 'routines'){
       try{ if(typeof switchTab === 'function') switchTab(section); }catch(e){}
       try{ if(typeof nudgeShowSection === 'function') nudgeShowSection(key); }catch(e){}
