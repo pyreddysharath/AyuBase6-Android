@@ -160,13 +160,31 @@ final class ClockNotifier {
         return v;
     }
 
+    private static final int[] AROW = {R.id.a1, R.id.a2, R.id.a3}, ACLOCK = {R.id.a1_clock, R.id.a2_clock, R.id.a3_clock}, ACITY = {R.id.a1_city, R.id.a2_city, R.id.a3_city};
+    /** Clock faces, up to three (Android 12+, where a clock face can be set to a time zone). */
+    private static RemoteViews worldFaces(Context c, JSONArray list, JSONObject w) {
+        RemoteViews v = new RemoteViews(c.getPackageName(), R.layout.notif_world_analog);
+        String show = w.optString("place", "both");
+        for (int i = 0; i < AROW.length; i++) {
+            JSONObject z = list.optJSONObject(i);
+            if (z == null) { v.setViewVisibility(AROW[i], View.GONE); continue; }
+            v.setViewVisibility(AROW[i], View.VISIBLE);
+            v.setString(ACLOCK[i], "setTimeZone", z.optString("tz"));
+            String place = "country".equals(show) && !z.optString("country").isEmpty() ? z.optString("country") : z.optString("city");
+            if (w.optBoolean("zone", false)) place += " · " + gmt(z.optString("tz"));
+            v.setTextViewText(ACITY[i], place);
+        }
+        return v;
+    }
+
     static void postWorld(Context c, JSONObject w) {
         NotificationManagerCompat nm = NotificationManagerCompat.from(c);
         JSONArray list = lockCities(w.optJSONArray("list"));
         if (!w.optBoolean("on", false) || list.length() == 0) { nm.cancel(ID_WORLD); return; }
         NotificationCompat.Builder b = base(c, "world").setCategory(NotificationCompat.CATEGORY_STATUS).setContentTitle("World Clock").setShowWhen(false)
             .setStyle(new NotificationCompat.DecoratedCustomViewStyle())
-            .setCustomContentView(worldViews(c, list, 2, w)).setCustomBigContentView(worldViews(c, list, 5, w))
+            .setCustomContentView(worldViews(c, list, 2, w))
+            .setCustomBigContentView("analog".equals(w.optString("style")) && Build.VERSION.SDK_INT >= 31 ? worldFaces(c, list, w) : worldViews(c, list, 5, w))
             .setPriority(NotificationCompat.PRIORITY_LOW);
         try { nm.notify(ID_WORLD, b.build()); } catch (SecurityException ignored) {}
     }
