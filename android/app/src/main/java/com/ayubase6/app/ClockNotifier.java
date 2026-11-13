@@ -151,6 +151,7 @@ final class ClockNotifier {
             v.setViewVisibility(ROW[i], View.VISIBLE);
             String place = "city".equals(show) ? z.optString("city") : "country".equals(show) && !z.optString("country").isEmpty() ? z.optString("country")
                 : z.optString("city") + (z.optString("country").isEmpty() ? "" : ", " + z.optString("country"));
+            if (!z.optString("label").isEmpty()) place = z.optString("label");   // the person's own name for this city
             if (w.optBoolean("zone", false)) place += " · " + gmt(z.optString("tz"));
             v.setTextViewText(CITY[i], place);
             v.setString(TIME[i], "setTimeZone", z.optString("tz"));
@@ -171,6 +172,7 @@ final class ClockNotifier {
             v.setViewVisibility(AROW[i], View.VISIBLE);
             v.setString(ACLOCK[i], "setTimeZone", z.optString("tz"));
             String place = "country".equals(show) && !z.optString("country").isEmpty() ? z.optString("country") : z.optString("city");
+            if (!z.optString("label").isEmpty()) place = z.optString("label");   // the person's own name for this city
             if (w.optBoolean("zone", false)) place += " · " + gmt(z.optString("tz"));
             v.setTextViewText(ACITY[i], place);
         }
