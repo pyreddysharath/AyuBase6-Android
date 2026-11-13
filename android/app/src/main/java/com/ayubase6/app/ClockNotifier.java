@@ -129,14 +129,29 @@ final class ClockNotifier {
     private static final int[] CITY = {R.id.w1_city, R.id.w2_city, R.id.w3_city, R.id.w4_city, R.id.w5_city};
     private static final int[] TIME = {R.id.w1_time, R.id.w2_time, R.id.w3_time, R.id.w4_time, R.id.w5_time};
 
-    private static RemoteViews worldViews(Context c, JSONArray list, int max) {
+    /** The cities switched on for the lock screen (an older list without the per-city switch shows them all). */
+    private static JSONArray lockCities(JSONArray list) {
+        JSONArray out = new JSONArray();
+        for (int i = 0; list != null && i < list.length(); i++) { JSONObject z = list.optJSONObject(i); if (z != null && z.optBoolean("lock", true)) out.put(z); }
+        return out;
+    }
+    private static String gmt(String tz) {
+        try {
+            int min = java.util.TimeZone.getTimeZone(tz).getOffset(System.currentTimeMillis()) / 60000, a = Math.abs(min);
+            return "GMT" + (min < 0 ? "-" : "+") + (a / 60) + (a % 60 == 0 ? "" : ":" + String.format(java.util.Locale.US, "%02d", a % 60));
+        } catch (Exception e) { return ""; }
+    }
+    private static RemoteViews worldViews(Context c, JSONArray list, int max, JSONObject w) {
         RemoteViews v = new RemoteViews(c.getPackageName(), R.layout.notif_world);
-        boolean h24 = android.text.format.DateFormat.is24HourFormat(c);
+        String fmt = w.optString("fmt", "phone"), show = w.optString("place", "both");
+        boolean h24 = "24".equals(fmt) || (!"12".equals(fmt) && android.text.format.DateFormat.is24HourFormat(c));
         for (int i = 0; i < ROW.length; i++) {
             JSONObject z = list.optJSONObject(i);
             if (z == null || i >= max) { v.setViewVisibility(ROW[i], View.GONE); continue; }
             v.setViewVisibility(ROW[i], View.VISIBLE);
-            String place = z.optString("city") + (z.optString("country").isEmpty() ? "" : ", " + z.optString("country"));
+            String place = "city".equals(show) ? z.optString("city") : "country".equals(show) && !z.optString("country").isEmpty() ? z.optString("country")
+                : z.optString("city") + (z.optString("country").isEmpty() ? "" : ", " + z.optString("country"));
+            if (w.optBoolean("zone", false)) place += " · " + gmt(z.optString("tz"));
             v.setTextViewText(CITY[i], place);
             v.setString(TIME[i], "setTimeZone", z.optString("tz"));
             v.setCharSequence(TIME[i], "setFormat12Hour", h24 ? "HH:mm" : "h:mm a");
@@ -147,11 +162,11 @@ final class ClockNotifier {
 
     static void postWorld(Context c, JSONObject w) {
         NotificationManagerCompat nm = NotificationManagerCompat.from(c);
-        JSONArray list = w.optJSONArray("list");
-        if (!w.optBoolean("on", false) || list == null || list.length() == 0) { nm.cancel(ID_WORLD); return; }
+        JSONArray list = lockCities(w.optJSONArray("list"));
+        if (!w.optBoolean("on", false) || list.length() == 0) { nm.cancel(ID_WORLD); return; }
         NotificationCompat.Builder b = base(c, "world").setCategory(NotificationCompat.CATEGORY_STATUS).setContentTitle("World Clock").setShowWhen(false)
             .setStyle(new NotificationCompat.DecoratedCustomViewStyle())
-            .setCustomContentView(worldViews(c, list, 2)).setCustomBigContentView(worldViews(c, list, 5))
+            .setCustomContentView(worldViews(c, list, 2, w)).setCustomBigContentView(worldViews(c, list, 5, w))
             .setPriority(NotificationCompat.PRIORITY_LOW);
         try { nm.notify(ID_WORLD, b.build()); } catch (SecurityException ignored) {}
     }
