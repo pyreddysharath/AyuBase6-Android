@@ -491,7 +491,7 @@
       document.querySelectorAll('.tab-panel').forEach(function(p, i){
         var b = document.createElement('div'); b.className = 'ayu-appb ayu-upd-banner'; b.setAttribute('role', 'status'); if(!i) b.id = 'ayu-update-card';
         var tab = (p.id || '').replace(/-panel$/, ''); if(ACC[tab]) b.style.setProperty('--appb-c', ACC[tab]);
-        b.innerHTML = '<div class="appb-tx"><b class="appb-t">Update available' + (cfg.versionName ? ': version ' + String(cfg.versionName).replace(/[<>&]/g, '') : '') + '</b>'
+        b.innerHTML = '<div class="appb-tx"><b class="appb-t">Update available</b>'
           + (state.selfInstall === false ? 'Tap Update to download it, then open the downloaded file. Your data stays.' : 'Tap Update; your data stays.')
           + '<div class="appb-btns"><button type="button" class="appb-get ayu-ec-allow">Update</button></div></div>'
           + '<button type="button" class="appb-x ayu-ec-later" aria-label="Close" title="Close">×</button>';
