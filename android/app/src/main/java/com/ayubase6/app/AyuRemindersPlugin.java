@@ -452,6 +452,26 @@ public class AyuRemindersPlugin extends Plugin {
         new Thread(() -> { Speaker.say(getContext(), text.length() > 200 ? text.substring(0, 200) : text, voice, lang); call.resolve(); }, "ayu-say").start();
     }
 
+    /**
+     * The screens on show are not the ones packed in this version of the app (the bridge compares the two numbers):
+     * the web view's kept copies are dropped and the app's own start page is loaded again under a new address.
+     */
+    @PluginMethod
+    public void reloadFresh(PluginCall call) {
+        try {
+            getActivity().runOnUiThread(() -> {
+                try {
+                    android.webkit.WebView wv = getBridge().getWebView();
+                    wv.clearCache(true);
+                    Uri u = Uri.parse(String.valueOf(wv.getUrl()));
+                    if (u.getScheme() != null && u.getAuthority() != null) wv.loadUrl(u.getScheme() + "://" + u.getAuthority() + "/?fresh=" + BuildConfig.VERSION_CODE);
+                    else wv.reload();
+                } catch (Exception ignored) {}
+            });
+            call.resolve();
+        } catch (Exception e) { call.reject("reload"); }
+    }
+
     /** Opens a web address in the phone's browser (e.g. the new app version to download). Only https. */
     @PluginMethod
     public void openUrl(PluginCall call) {

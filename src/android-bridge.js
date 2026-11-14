@@ -406,7 +406,18 @@
   state.updateChecksSet = function(n){ return P.updateChecksSet({ times:+n }); };
   // Which version this is: "website" (updates itself from ayubase6.com) or "play" (Google Play updates it)
   var PLAY_URL = 'https://play.google.com/store/apps/details?id=com.ayubase6.app';
-  var storeP = P.getStatus().then(function(st){ if(st && st.selfInstall === false){ state.selfInstall = false; upd.viaBrowser = true; } return String((st && st.store) || 'website'); }, function(){ return 'website'; })
+  // The screens carry the number of the app version they were packed in. If the app is newer than its screens,
+  // the web view is showing kept copies of old ones: they are dropped and the page is loaded again (twice at most).
+  function screensCheck(st){
+    try{
+      var www = +window.AYU_WWW_VERSION || 0, app = +(st && st.versionCode) || 0;
+      state.wwwVersion = www;
+      if(!www || !app || www === app) return;
+      var n = +(sessionStorage.getItem('ayuFreshTry') || 0);
+      if(n < 2 && typeof P.reloadFresh === 'function'){ sessionStorage.setItem('ayuFreshTry', String(n + 1)); P.reloadFresh().catch(noop); }
+    }catch(e){}
+  }
+  var storeP = P.getStatus().then(function(st){ screensCheck(st); if(st && st.selfInstall === false){ state.selfInstall = false; upd.viaBrowser = true; } return String((st && st.store) || 'website'); }, function(){ return 'website'; })
     .then(function(s){ state.store = upd.store = s; if(s === 'play'){ upd.latest = null; updEvent(); } return s; });
   state.updateCheck = function(){
     if(state.store === 'play'){ upd.error = ''; upd.phase = ''; upd.latest = null; upd.checkedAt = Date.now(); updEvent(); return Promise.resolve(upd); }

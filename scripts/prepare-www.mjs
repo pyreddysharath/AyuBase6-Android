@@ -29,7 +29,7 @@ function patch(find, repl, label) {
   html = html.replace(find, () => repl);
 }
 patch('<head>\n<meta charset="UTF-8">\n',
-  '<head>\n<meta charset="UTF-8">\n<script>window.AYU_ANDROID=true;window.AYU_LIVE_BASE=' + JSON.stringify(LIVE) + ';</script>\n<script src="android-bridge.js"></script>\n',
+  '<head>\n<meta charset="UTF-8">\n<script>window.AYU_ANDROID=true;window.AYU_WWW_VERSION=' + (parseInt(process.env.VERSION_CODE, 10) || 0) + ';window.AYU_LIVE_BASE=' + JSON.stringify(LIVE) + ';</script>\n<script src="android-bridge.js"></script>\n',
   'bridge');
 patch("new URL('content/' + folder + '/media/' + file, document.baseURI)",
   "new URL('content/' + folder + '/media/' + file, window.AYU_LIVE_BASE || document.baseURI)",
