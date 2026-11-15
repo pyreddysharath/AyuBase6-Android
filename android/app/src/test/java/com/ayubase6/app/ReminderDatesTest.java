@@ -55,4 +55,12 @@ public class ReminderDatesTest {
         JSONObject rules = new JSONObject().put("custom", new JSONArray().put(x));
         assertEquals(0, ReminderRules.due(rules, new ReminderRules.Local("2026-11-12", 541, 4), 0).size());
     }
+
+    @Test public void detailsBecomeTheNotificationText() throws Exception {
+        JSONObject plain = c("once").put("date", "2026-11-12");
+        JSONObject with = c("once").put("date", "2026-11-12").put("details", "2 tablets after lunch");
+        ReminderRules.Local l = new ReminderRules.Local("2026-11-12", 540, 4);
+        assertEquals("It is time for your reminder.", ReminderRules.due(new JSONObject().put("custom", new JSONArray().put(plain)), l, 0).get(0).body);
+        assertEquals("2 tablets after lunch", ReminderRules.due(new JSONObject().put("custom", new JSONArray().put(with)), l, 0).get(0).body);
+    }
 }
