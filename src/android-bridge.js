@@ -482,9 +482,11 @@
   var AUTO_KEY = 'ayuAutoUpdate', AUTO_TRIED = 'ayuAutoUpdateTried';
   state.autoUpdateGet = function(){ return ls(AUTO_KEY) === '1'; };
   state.autoUpdateSet = function(on){ ls(AUTO_KEY, on ? '1' : '0'); if(on) setTimeout(checkUpdate, 50); updEvent(); };
-  function checkUpdate(){
+  function checkUpdate(n){
+    n = +n || 0;   // called by timers and events too, which pass something else: counts the tries made after a failed check
     storeP.then(function(s){ if(s !== 'play') return state.updateCheck(); }).then(function(){
       if(state.store === 'play') return;
+      if(upd.error && n < 4){ setTimeout(function(){ checkUpdate(n + 1); }, [1500, 4000, 10000, 30000][n]); return; }   // right after the app starts the phone's network may not be ready: try again
       var cfg = upd.latest; if(!cfg) return;
       if(state.autoUpdateGet() && state.selfInstall !== false && typeof P.updateDownload === 'function' && ls(AUTO_TRIED) !== String(cfg.versionCode)){
         ls(AUTO_TRIED, String(cfg.versionCode)); document.querySelectorAll('.ayu-upd-banner').forEach(function(b){ b.remove(); });
@@ -498,7 +500,7 @@
       if(!document.getElementById('ayu-upd-dlg-css')){
         var cs = document.createElement('style'); cs.id = 'ayu-upd-dlg-css';
         cs.textContent = '.ayu-upd-dlg{position:fixed;inset:0;z-index:2147483000;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(15,23,42,.5)}'
-          + '.ayu-upd-dlg .ud-card{width:min(360px,100%);background:#fff;color:#1e293b;border-radius:18px;padding:18px 18px 14px;box-shadow:0 18px 50px rgba(0,0,0,.35);font:inherit}'
+          + '.ayu-upd-dlg .ud-card{width:min(360px,100%);max-height:calc(100vh - 36px);max-height:calc(100dvh - 36px);overflow:auto;background:#fff;color:#1e293b;border-radius:18px;padding:18px 18px 14px;box-shadow:0 18px 50px rgba(0,0,0,.35);font:inherit}'
           + '.ayu-upd-dlg .ud-t{display:block;font-weight:800;font-size:1.08rem;margin-bottom:6px;color:var(--footer-accent,#0d9488)}'
           + '.ayu-upd-dlg .ud-p{margin:0;font-size:.92rem;line-height:1.4}'
           + '.ayu-upd-dlg.ayu-upd-banner .appb-auto{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:14px 0 0;padding:8px 10px;border-radius:10px;background:#f1f5f9;color:#334155;font-size:.82rem;font-weight:800}'
@@ -668,6 +670,7 @@
     setTimeout(function(){ ready = true; if(pendingTap){ var d = pendingTap; pendingTap = null; openTap(d); } }, 600);
     setTimeout(checkUpdate, 200);   // an update shows as soon as the app opens
     document.addEventListener('visibilitychange', function(){ if(!document.hidden) setTimeout(checkUpdate, 300); });
+    window.addEventListener('online', function(){ setTimeout(checkUpdate, 300); });
   }
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once:true }); else start();
 })();
