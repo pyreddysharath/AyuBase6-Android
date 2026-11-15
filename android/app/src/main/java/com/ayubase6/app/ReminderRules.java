@@ -174,7 +174,7 @@ final class ReminderRules {
                 isDue = hasInt(c.optJSONArray("times"), m);
             }
             if (isDue) out.add(new Due("custom" + str(c.opt("id"), 12).replaceAll("[^A-Za-z0-9]", ""),
-                str(c.opt("name"), 80), str(c.opt("details"), 200).isEmpty() ? "It is time for your reminder." : str(c.opt("details"), 200), "alerts").vib(c));
+                str(c.opt("name"), 80), str(c.opt("details"), 1000).isEmpty() ? "It is time for your reminder." : str(c.opt("details"), 1000), "alerts").vib(c));
         }
         return out;
     }
