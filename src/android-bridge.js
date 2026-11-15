@@ -492,38 +492,44 @@
       }
       if(laterHidden(cfg.versionCode)) return;
       if(document.querySelector('.ayu-upd-banner')) return;
-      // A banner at the top of every tab (not a pop-up): what is new, Update, and × to close
-      var ACC = { activity:'#2563eb', nutrition:'#16a34a', calculator:'var(--calc-2)', alerts:'var(--alert-2)', routines:'var(--rout-2)', mind:'var(--mind-2)' };
+      // A pop-up in the middle of the screen, so it is seen wherever the person is on the page: what is new, Update, Later
       var all = [];
       function gone(){ all.forEach(function(b){ b.remove(); }); ls('ayuUpdAck', String(cfg.versionCode)); try{ if(window.ayuDotsEnforce) window.ayuDotsEnforce(); }catch(e){} }   // used: the dots for this update go
-      document.querySelectorAll('.tab-panel').forEach(function(p, i){
-        var b = document.createElement('div'); b.className = 'ayu-appb ayu-upd-banner'; b.setAttribute('role', 'status'); if(!i) b.id = 'ayu-update-card';
-        var tab = (p.id || '').replace(/-panel$/, ''); if(ACC[tab]) b.style.setProperty('--appb-c', ACC[tab]);
-        b.innerHTML = '<div class="appb-tx"><b class="appb-t">Update available</b>'
-          + (state.selfInstall === false ? 'Tap Update to download it, then open the downloaded file. Your data stays.' : 'Tap Update; your data stays.')
-          + '<div class="appb-btns"><button type="button" class="appb-get ayu-ec-allow">Update</button></div>'
-          + (state.selfInstall !== false && !state.autoUpdateGet() ? '<label class="appb-auto"><span>Update automatically next time</span><span class="master-switch"><input type="checkbox" class="appb-auto-sw" aria-label="Update automatically next time"></span></label>' : '') + '</div>'
-          + '<button type="button" class="appb-x ayu-ec-later" aria-label="Close" title="Close">×</button>';
-        b.querySelector('.ayu-ec-allow').addEventListener('click', function(){
-          gone(); state.updateStart();
-          setTimeout(function(){   // after this tap (the footer closes on taps outside it)
-            try{ if(typeof window.showFooterSection === 'function'){ window.showFooterSection('backup'); if(typeof window.showFooterSub === 'function') window.showFooterSub('backup', 'app'); var sa = document.getElementById('sec-app'); if(sa) sa.scrollIntoView({ block:'center', behavior:'smooth' }); } }catch(e){}
-          }, 60);
-        });
-        var asw = b.querySelector('.appb-auto-sw');
-        if(asw) asw.addEventListener('change', function(){
-          if(asw.checked) ls(AUTO_TRIED, String(cfg.versionCode));   // this update still waits for the tap; the next ones come by themselves
-          state.autoUpdateSet(asw.checked);
-          document.querySelectorAll('.appb-auto-sw').forEach(function(o){ o.checked = asw.checked; });
-          if(asw.checked) noteBanner('Done. New versions will download by themselves, and Android asks you to confirm.', 6000);
-        });
-        b.querySelector('.ayu-ec-later').addEventListener('click', function(){
-          ls(UPD_KEY, JSON.stringify({ closed:true, v:String(cfg.versionCode), at:Date.now() })); gone();
-          noteBanner('You can update any time from <b>Backup &amp; Restore → App Updates</b>, in the footer.', 10000);
-        });
-        var ann = p.querySelector(':scope > .ayu-ann'); if(ann) ann.after(b); else p.insertBefore(b, p.firstChild);
-        all.push(b);
+      if(!document.getElementById('ayu-upd-dlg-css')){
+        var cs = document.createElement('style'); cs.id = 'ayu-upd-dlg-css';
+        cs.textContent = '.ayu-upd-dlg{position:fixed;inset:0;z-index:2147483000;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(15,23,42,.5)}'
+          + '.ayu-upd-dlg .ud-card{width:min(360px,100%);background:#fff;color:#1e293b;border-radius:18px;padding:18px 18px 14px;box-shadow:0 18px 50px rgba(0,0,0,.35);font:inherit}'
+          + '.ayu-upd-dlg .ud-t{display:block;font-weight:800;font-size:1.08rem;margin-bottom:6px;color:var(--footer-accent,#0d9488)}'
+          + '.ayu-upd-dlg .ud-p{margin:0;font-size:.92rem;line-height:1.4}'
+          + '.ayu-upd-dlg.ayu-upd-banner .appb-auto{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:14px 0 0;padding:8px 10px;border-radius:10px;background:#f1f5f9;color:#334155;font-size:.82rem;font-weight:800}'
+          + '.ayu-upd-dlg .ud-btns{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}'
+          + '.ayu-upd-dlg .ud-btns button{border:0;border-radius:10px;padding:10px 18px;font:inherit;font-weight:800;cursor:pointer}'
+          + '.ayu-upd-dlg .ud-later{background:transparent;color:var(--footer-accent,#0d9488)}'
+          + '.ayu-upd-dlg .ud-go{background:var(--footer-accent,#0d9488);color:#fff}';
+        document.head.appendChild(cs);
+      }
+      var b = document.createElement('div'); b.className = 'ayu-upd-banner ayu-upd-dlg'; b.id = 'ayu-update-card'; b.setAttribute('role', 'alertdialog'); b.setAttribute('aria-modal', 'true'); b.setAttribute('aria-label', 'Update available');
+      b.innerHTML = '<div class="ud-card"><b class="ud-t">Update available</b><p class="ud-p">'
+        + (state.selfInstall === false ? 'Tap Update to download it, then open the downloaded file. Your data stays.' : 'Tap Update; your data stays.') + '</p>'
+        + (state.selfInstall !== false && !state.autoUpdateGet() ? '<label class="appb-auto"><span>Update automatically next time</span><span class="master-switch"><input type="checkbox" class="appb-auto-sw" aria-label="Update automatically next time"></span></label>' : '')
+        + '<div class="ud-btns"><button type="button" class="ud-later ayu-ec-later">Later</button><button type="button" class="ud-go ayu-ec-allow">Update</button></div></div>';
+      b.querySelector('.ayu-ec-allow').addEventListener('click', function(){
+        gone(); state.updateStart();
+        setTimeout(function(){   // after this tap (the footer closes on taps outside it)
+          try{ if(typeof window.showFooterSection === 'function'){ window.showFooterSection('backup'); if(typeof window.showFooterSub === 'function') window.showFooterSub('backup', 'app'); var sa = document.getElementById('sec-app'); if(sa) sa.scrollIntoView({ block:'center', behavior:'smooth' }); } }catch(e){}
+        }, 60);
       });
+      var asw = b.querySelector('.appb-auto-sw');
+      if(asw) asw.addEventListener('change', function(){
+        if(asw.checked) ls(AUTO_TRIED, String(cfg.versionCode));   // this update still waits for the tap; the next ones come by themselves
+        state.autoUpdateSet(asw.checked);
+        document.querySelectorAll('.appb-auto-sw').forEach(function(o){ o.checked = asw.checked; });
+      });
+      b.querySelector('.ayu-ec-later').addEventListener('click', function(){
+        ls(UPD_KEY, JSON.stringify({ closed:true, v:String(cfg.versionCode), at:Date.now() })); gone();
+        noteBanner('You can update any time from <b>Backup &amp; Restore → App Updates</b>, in the footer.', 10000);
+      });
+      document.body.appendChild(b); all.push(b);
     });
   }
 
