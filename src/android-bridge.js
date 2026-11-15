@@ -478,10 +478,18 @@
     if(upd.phase === 'installing'){ upd.phase = ''; updEvent(); }   // back from Android's screen without updating
   });
 
+  // Update automatically (off until the person turns it on): a new version downloads by itself, then Android asks to confirm
+  var AUTO_KEY = 'ayuAutoUpdate', AUTO_TRIED = 'ayuAutoUpdateTried';
+  state.autoUpdateGet = function(){ return ls(AUTO_KEY) === '1'; };
+  state.autoUpdateSet = function(on){ ls(AUTO_KEY, on ? '1' : '0'); if(on) setTimeout(checkUpdate, 50); updEvent(); };
   function checkUpdate(){
     storeP.then(function(s){ if(s !== 'play') return state.updateCheck(); }).then(function(){
       if(state.store === 'play') return;
       var cfg = upd.latest; if(!cfg) return;
+      if(state.autoUpdateGet() && state.selfInstall !== false && typeof P.updateDownload === 'function' && ls(AUTO_TRIED) !== String(cfg.versionCode)){
+        ls(AUTO_TRIED, String(cfg.versionCode)); document.querySelectorAll('.ayu-upd-banner').forEach(function(b){ b.remove(); });
+        state.updateStart(); return;   // one try for each version; if it fails, the banner and App Updates show Update as usual
+      }
       if(laterHidden(cfg.versionCode)) return;
       if(document.querySelector('.ayu-upd-banner')) return;
       // A banner at the top of every tab (not a pop-up): what is new, Update, and × to close
@@ -493,13 +501,21 @@
         var tab = (p.id || '').replace(/-panel$/, ''); if(ACC[tab]) b.style.setProperty('--appb-c', ACC[tab]);
         b.innerHTML = '<div class="appb-tx"><b class="appb-t">Update available</b>'
           + (state.selfInstall === false ? 'Tap Update to download it, then open the downloaded file. Your data stays.' : 'Tap Update; your data stays.')
-          + '<div class="appb-btns"><button type="button" class="appb-get ayu-ec-allow">Update</button></div></div>'
+          + '<div class="appb-btns"><button type="button" class="appb-get ayu-ec-allow">Update</button></div>'
+          + (state.selfInstall !== false && !state.autoUpdateGet() ? '<label class="appb-auto"><span>Update automatically next time</span><span class="master-switch"><input type="checkbox" class="appb-auto-sw" aria-label="Update automatically next time"></span></label>' : '') + '</div>'
           + '<button type="button" class="appb-x ayu-ec-later" aria-label="Close" title="Close">×</button>';
         b.querySelector('.ayu-ec-allow').addEventListener('click', function(){
           gone(); state.updateStart();
           setTimeout(function(){   // after this tap (the footer closes on taps outside it)
             try{ if(typeof window.showFooterSection === 'function'){ window.showFooterSection('backup'); if(typeof window.showFooterSub === 'function') window.showFooterSub('backup', 'app'); var sa = document.getElementById('sec-app'); if(sa) sa.scrollIntoView({ block:'center', behavior:'smooth' }); } }catch(e){}
           }, 60);
+        });
+        var asw = b.querySelector('.appb-auto-sw');
+        if(asw) asw.addEventListener('change', function(){
+          if(asw.checked) ls(AUTO_TRIED, String(cfg.versionCode));   // this update still waits for the tap; the next ones come by themselves
+          state.autoUpdateSet(asw.checked);
+          document.querySelectorAll('.appb-auto-sw').forEach(function(o){ o.checked = asw.checked; });
+          if(asw.checked) noteBanner('Done. New versions will download by themselves, and Android asks you to confirm.', 6000);
         });
         b.querySelector('.ayu-ec-later').addEventListener('click', function(){
           ls(UPD_KEY, JSON.stringify({ closed:true, v:String(cfg.versionCode), at:Date.now() })); gone();
