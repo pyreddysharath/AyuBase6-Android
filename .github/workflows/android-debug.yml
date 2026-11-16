@@ -8,8 +8,7 @@ name: Android debug APK
 # Needs repository secrets: RELEASE_KEYSTORE_B64, RELEASE_KEYSTORE_PASSWORD, RELEASE_KEY_ALIAS, RELEASE_KEY_PASSWORD,
 # and WEB_DEPLOY_TOKEN (fine-grained token, AyuBase6.com, Contents: read and write).
 on:
-  push:
-    branches: [main]
+  # No build on push: it runs only when started by hand (keeps the free Actions storage down)
   workflow_dispatch:
     inputs:
       web_ref:
