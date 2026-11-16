@@ -96,6 +96,7 @@ jobs:
           ls -la out
 
       - uses: actions/upload-artifact@v4
+        continue-on-error: true   # the Actions storage quota can be full; the release steps below do not need it
         with:
           name: AyuBase6-debug-${{ github.run_number }}
           path: out/*.apk
@@ -124,6 +125,7 @@ jobs:
 
       - name: Keep the Google Play bundle with this run
         if: github.event.inputs.publish == 'true'
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: AyuBase6-play-bundle-${{ github.run_number }}
