@@ -416,8 +416,16 @@ final class ReminderScheduler {
                 .putExtra(ActionReceiver.EXTRA_TITLE, title).putExtra(ActionReceiver.EXTRA_BODY, body);
             acts.put(a, PendingIntent.getBroadcast(c, (tag + "|" + a).hashCode(), ai, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE));
         }
+        // Posture check: the sitting picture opens under the text (the standard picture style, so its own buttons are normal buttons)
+        boolean pic = false;
+        if (tapKey != null && tapKey.endsWith("posture")) {
+            try {
+                Bitmap bp = android.graphics.BitmapFactory.decodeResource(c.getResources(), R.drawable.posture_pic);
+                if (bp != null) { b.setStyle(new NotificationCompat.BigPictureStyle().bigPicture(bp).bigLargeIcon((Bitmap) null).setSummaryText(body)); pic = true; }
+            } catch (Exception | OutOfMemoryError e) { pic = false; }
+        }
         boolean own = false;
-        if (acts.containsKey(A_OFF_THIS)) {   // "Turn off this" is a bell icon at the bottom right; on Eyes, Start sits on the same line
+        if (!pic && acts.containsKey(A_OFF_THIS)) {   // "Turn off this" is a bell icon at the bottom right; on Eyes, Start sits on the same line
             try {
                 boolean dark = (c.getResources().getConfiguration().uiMode & android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES;
                 android.graphics.Bitmap bell = art("belloff" + theme.key() + dark, () -> NotificationArt.bellOff(theme, dark));
