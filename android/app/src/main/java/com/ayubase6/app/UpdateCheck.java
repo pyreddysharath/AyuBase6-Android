@@ -18,7 +18,7 @@ import java.util.Calendar;
 
 /**
  * Looks for a new app version (config/android-app.json on the website, the file the app's own check reads)
- * every 2 hours from 10 AM to 8 PM (10, 12, 2, 4, 6, 8: 6 times a day), and leaves one quiet notification per new version.
+ * every 2 hours from 10 AM to 8 PM (10, 12, 2, 4, 6, 8: 6 times a day), and shows a notification at every check until the new version is installed.
  * The stored "times" value is only on (above 0) or off (0); it is on by default.
  */
 public class UpdateCheck extends BroadcastReceiver {
@@ -85,11 +85,10 @@ public class UpdateCheck extends BroadcastReceiver {
         JSONObject cfg = new JSONObject(body);
         long latest = cfg.optLong("versionCode", 0), mine = myVersion(c);
         if (latest <= mine || !cfg.optString("url", "").startsWith("https://")) return;
-        SharedPreferences sp = c.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
-        if (sp.getLong("told", 0) >= latest || AnnouncementCheck.appVisible) return;   // once per version; the app shows its own card
-        ReminderScheduler.show(c, TAG, "A new version of AyuBase6 is ready", "Tap to update.",
-            true, NotificationArt.REMINDERS, "update", TAG);
-        sp.edit().putLong("told", latest).apply();
+        if (AnnouncementCheck.appVisible) return;   // the app shows its own card while it is open
+        // At every check (every 2 hours, 10 AM to 8 PM) until the update is installed: it pops up on the screen (sound, no vibration)
+        ReminderScheduler.show(c, TAG, "A new version of AyuBase6 is ready", "Tap to download.",
+            false, NotificationArt.REMINDERS, "update", TAG, new String[0], false, "");
     }
 
     static long myVersion(Context c) {
