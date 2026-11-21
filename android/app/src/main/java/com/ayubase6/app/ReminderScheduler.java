@@ -234,6 +234,8 @@ final class ReminderScheduler {
         finally { try { reschedule(c); } catch (Throwable ignored) { } }
     }
 
+    private static final java.util.concurrent.ScheduledExecutorService GAP = java.util.concurrent.Executors.newSingleThreadScheduledExecutor();
+
     private static void onAlarmInner(Context c, long target) {
         JSONObject rules = loadRules(c);
         long now = System.currentTimeMillis() / 60000L;
@@ -244,6 +246,7 @@ final class ReminderScheduler {
             for (long t = from; t <= now; t++) {
                 for (ReminderRules.Due d : ReminderRules.due(rules, local(t), t)) { latest.put(d.key, d); dueAt.put(d.key, t); }
             }
+            int soundIdx = 0;
             for (Map.Entry<String, ReminderRules.Due> e : latest.entrySet()) {
                 ReminderRules.Due d = e.getValue();
                 // Checks → Alarm rings (only if it is due now, not hours late); everything else is a notification
@@ -254,7 +257,17 @@ final class ReminderScheduler {
                 if (ring) { boolean ok = AlarmService.start(c, d.key, d.title, d.body, 0); AlarmLog.add(c, (ok ? "fired:" : "blocked:") + d.key); if (ok) continue; }
                 if (onlyInUse(d.key) && !inUse(c)) continue;   // the phone is put away: no "Do not use mobile" / "Sleep" reminder
                 try {
-                    show(c, "nudge-" + d.key, d.title, d.body, false, NotificationArt.forKey(d.section, d.key), d.section, d.key, actionsFor(d.key), d.vibrate, d.sound);
+                    final NotificationArt.Theme art = NotificationArt.forKey(d.section, d.key);
+                    if (soundIdx == 0) {
+                        show(c, "nudge-" + d.key, d.title, d.body, false, art, d.section, d.key, actionsFor(d.key), d.vibrate, d.sound);
+                    } else {
+                        // Several due together: the sound plays once; the others appear quietly now and ring one by one, 25 s apart
+                        show(c, "nudge-" + d.key, d.title, d.body, true, art, d.section, d.key, actionsFor(d.key), false, d.sound);
+                        final ReminderRules.Due dd = d; final long gapSec = 25L * soundIdx; final Context app = c.getApplicationContext();
+                        GAP.schedule(() -> { try { show(app, "nudge-" + dd.key, dd.title, dd.body, false, art, dd.section, dd.key, actionsFor(dd.key), dd.vibrate, dd.sound); } catch (Throwable ignored) { } },
+                                gapSec, java.util.concurrent.TimeUnit.SECONDS);
+                    }
+                    soundIdx++;
                     if (!d.say.isEmpty() && NotificationManagerCompat.from(c).areNotificationsEnabled()) Speaker.say(c, d.say, d.voice, d.lang);
                 } catch (Throwable t) { AlarmLog.add(c, "show-failed:" + d.key + ":" + t.getClass().getSimpleName()); }
             }
