@@ -157,6 +157,18 @@ final class ReminderRules {
             }
         }
 
+        // Mind: one thought a day at the chosen time (the next one in the list each day)
+        JSONObject mind = rules.optJSONObject("mind");
+        if (mind != null && mind.optBoolean("on", false)) {
+            JSONArray th = mind.optJSONArray("items");
+            Double at = num(mind, "at");
+            if (th != null && th.length() > 0 && at != null && at == m) {
+                long dayNo = java.time.LocalDate.parse(local.day).toEpochDay();
+                String msg = str(th.opt((int) (((dayNo % th.length()) + th.length()) % th.length())), 300);
+                if (!msg.isEmpty()) out.add(new Due("mind", "Mind", msg, "alerts").vib(mind));
+            }
+        }
+
         JSONArray custom = rules.optJSONArray("custom");
         if (custom != null) for (int i = 0; i < custom.length(); i++) {
             JSONObject c = custom.optJSONObject(i);

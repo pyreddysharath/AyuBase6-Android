@@ -28,9 +28,17 @@ final class NotificationArt {
 
     // Same values as NUDGE_THEMES in the web app.
     static final Theme REMINDERS = new Theme(c("#f0fdfa"), c("#ccfbf1"), c("#5eead4"), c("#0d9488"), c("#12998c"), c("#08766e"));
-    static final Theme ROUTINES = new Theme(c("#fffbeb"), c("#fde68a"), c("#fbbf24"), c("#d97706"), c("#cc7f1e"), c("#b06812"));
+    static final Theme ROUTINES = new Theme(c("#fff1f3"), c("#fcd5dc"), c("#f4a0b0"), c("#e8607a"), c("#e8607a"), c("#c94862"));   // Care: coral pink
+
+    static final Theme MIND = new Theme(c("#f3f1ff"), c("#e5dfff"), c("#a5b4fc"), c("#6250b3"), c("#6250b3"), c("#4a3a96"));   // Mind: indigo
 
     static Theme forSection(String section) { return "routines".equals(section) ? ROUTINES : REMINDERS; }
+    /** Care (coral pink) holds My Day Plan and the Health Breaks (Eyes, Walk, Water, Posture, Stretch, Breathing, Eye Exercise); Reminders (teal) the rest. */
+    static Theme forKey(String section, String key) {
+        if ("mind".equals(key)) return MIND;
+        if (key != null && key.matches("break|walk|drink|posture|stretch|breathe|eyeex")) return ROUTINES;
+        return forSection(section);
+    }
 
     /** A theme from one section colour, mixed like the web app's sectionTheme(). */
     static Theme fromColor(int col) {

@@ -229,6 +229,12 @@ final class ReminderScheduler {
 
     /** The alarm for minute `target` rang: show what is due (latest per reminder), then set the next alarm. */
     static void onAlarm(Context c, long target) {
+        try { onAlarmInner(c, target); }
+        catch (Throwable t) { AlarmLog.add(c, "onAlarm-failed:" + t.getClass().getSimpleName()); }
+        finally { try { reschedule(c); } catch (Throwable ignored) { } }
+    }
+
+    private static void onAlarmInner(Context c, long target) {
         JSONObject rules = loadRules(c);
         long now = System.currentTimeMillis() / 60000L;
         if (rules != null && target > 0) {
@@ -247,8 +253,10 @@ final class ReminderScheduler {
                 if (isAlarm && !ring) AlarmLog.add(c, "late:" + d.key + ":" + late);
                 if (ring) { boolean ok = AlarmService.start(c, d.key, d.title, d.body, 0); AlarmLog.add(c, (ok ? "fired:" : "blocked:") + d.key); if (ok) continue; }
                 if (onlyInUse(d.key) && !inUse(c)) continue;   // the phone is put away: no "Do not use mobile" / "Sleep" reminder
-                show(c, "nudge-" + d.key, d.title, d.body, false, NotificationArt.forSection(d.section), d.section, d.key, actionsFor(d.key), d.vibrate, d.sound);
-                if (!d.say.isEmpty() && NotificationManagerCompat.from(c).areNotificationsEnabled()) Speaker.say(c, d.say, d.voice, d.lang);
+                try {
+                    show(c, "nudge-" + d.key, d.title, d.body, false, NotificationArt.forKey(d.section, d.key), d.section, d.key, actionsFor(d.key), d.vibrate, d.sound);
+                    if (!d.say.isEmpty() && NotificationManagerCompat.from(c).areNotificationsEnabled()) Speaker.say(c, d.say, d.voice, d.lang);
+                } catch (Throwable t) { AlarmLog.add(c, "show-failed:" + d.key + ":" + t.getClass().getSimpleName()); }
             }
         }
         // "Not yet" reminders that are due now (or missed by less than an hour)
@@ -263,11 +271,10 @@ final class ReminderScheduler {
             if (now - t <= MAX_LATE_MIN) {
                 String k = o.optString("key");
                 String sec = k.startsWith("alarm-rem") ? "alerts" : "routines";   // Reminders alarms: "rem", "rem-<id>"
-                show(c, "nudge-" + k, o.optString("title"), o.optString("body"), false, NotificationArt.forSection(sec), sec, k, actionsFor(k));
+                show(c, "nudge-" + k, o.optString("title"), o.optString("body"), false, NotificationArt.forKey(sec, k), sec, k, actionsFor(k));
             }
         }
         saveSnoozes(c, keep);
-        reschedule(c);
     }
 
 
@@ -360,15 +367,25 @@ final class ReminderScheduler {
 
     /** The reminder as the app draws it. Closed (`open` false): one line of text with Start and the bell beside it.
      *  Open: the whole text, then Start and the bell on the last line (without Start the bell stays beside the text). */
-    private static android.widget.RemoteViews offView(Context c, String title, String body, android.graphics.Bitmap bell, PendingIntent off, PendingIntent start, boolean open) {
+    private static android.widget.RemoteViews offView(Context c, String title, String body, android.graphics.Bitmap bell, PendingIntent off, PendingIntent start, boolean open, long countMs) {
         android.widget.RemoteViews v = new android.widget.RemoteViews(c.getPackageName(), R.layout.notif_reminder);
         v.setTextViewText(R.id.nr_title, title == null ? "" : title);
         v.setTextViewText(R.id.nr_text, body == null ? "" : body);
         v.setInt(R.id.nr_text, "setMaxLines", open ? 6 : 1);
-        boolean row = open && start != null;
+        boolean counting = countMs > 0;   // Eyes (20-20-20) after Start: the countdown sits where the Start button was
+        boolean row = open && (start != null || counting);
         v.setViewVisibility(R.id.nr_row, row ? android.view.View.VISIBLE : android.view.View.GONE);
         v.setViewVisibility(R.id.nr_off_side, row ? android.view.View.GONE : android.view.View.VISIBLE);
-        v.setViewVisibility(R.id.nr_start_side, !row && start != null ? android.view.View.VISIBLE : android.view.View.GONE);
+        v.setViewVisibility(R.id.nr_start_side, !row && start != null && !counting ? android.view.View.VISIBLE : android.view.View.GONE);
+        v.setViewVisibility(R.id.nr_start, start != null && !counting ? android.view.View.VISIBLE : android.view.View.GONE);
+        v.setViewVisibility(R.id.nr_count_side, !row && counting ? android.view.View.VISIBLE : android.view.View.GONE);
+        v.setViewVisibility(R.id.nr_count, row && counting ? android.view.View.VISIBLE : android.view.View.GONE);
+        if (counting) {
+            long base = android.os.SystemClock.elapsedRealtime() + countMs;
+            for (int id : new int[]{R.id.nr_count_side, R.id.nr_count}) {
+                v.setChronometerCountDown(id, true); v.setChronometer(id, base, "%s", true);
+            }
+        }
         v.setImageViewBitmap(R.id.nr_off, bell); v.setImageViewBitmap(R.id.nr_off_side, bell);
         v.setOnClickPendingIntent(R.id.nr_off, off); v.setOnClickPendingIntent(R.id.nr_off_side, off);
         if (start != null) { v.setOnClickPendingIntent(R.id.nr_start, start); v.setOnClickPendingIntent(R.id.nr_start_side, start); }
@@ -381,6 +398,10 @@ final class ReminderScheduler {
     }
 
     static void show(Context c, String tag, String title, String body, boolean silent, NotificationArt.Theme theme, String section, String tapKey, String[] actions, boolean vibrate, String sound) {
+        show(c, tag, title, body, silent, theme, section, tapKey, actions, vibrate, sound, 0L);
+    }
+
+    static void show(Context c, String tag, String title, String body, boolean silent, NotificationArt.Theme theme, String section, String tapKey, String[] actions, boolean vibrate, String sound, long countMs) {
         ensureChannels(c);
         NotificationManagerCompat nm = NotificationManagerCompat.from(c);
         if (!nm.areNotificationsEnabled()) return;
@@ -416,11 +437,14 @@ final class ReminderScheduler {
                 .putExtra(ActionReceiver.EXTRA_TITLE, title).putExtra(ActionReceiver.EXTRA_BODY, body);
             acts.put(a, PendingIntent.getBroadcast(c, (tag + "|" + a).hashCode(), ai, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE));
         }
+        // Care (My Day Plan and Health Breaks): closes by itself after the chosen minutes, when that is switched on
+        try { if (theme == NotificationArt.ROUTINES && !silent) { JSONObject ar = loadRules(c); int am = ar == null ? 0 : ar.optInt("autoDismissMin", 0); if (am > 0 && am <= 240) b.setTimeoutAfter(am * 60000L); } } catch (Throwable ignored) { }
         // Posture check: the sitting picture opens under the text (the standard picture style, so its own buttons are normal buttons)
         boolean pic = false;
         if (tapKey != null && tapKey.endsWith("posture")) {
             try {
-                Bitmap bp = android.graphics.BitmapFactory.decodeResource(c.getResources(), R.drawable.posture_pic);
+                android.graphics.BitmapFactory.Options bo = new android.graphics.BitmapFactory.Options(); bo.inSampleSize = 2; bo.inPreferredConfig = Bitmap.Config.RGB_565;   // 480x240: a full-size picture can be too large for the notification and made posting fail
+                Bitmap bp = android.graphics.BitmapFactory.decodeResource(c.getResources(), R.drawable.posture_pic, bo);
                 if (bp != null) { b.setStyle(new NotificationCompat.BigPictureStyle().bigPicture(bp).bigLargeIcon((Bitmap) null).setSummaryText(body)); pic = true; }
             } catch (Exception | OutOfMemoryError e) { pic = false; }
         }
@@ -430,20 +454,29 @@ final class ReminderScheduler {
                 boolean dark = (c.getResources().getConfiguration().uiMode & android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES;
                 android.graphics.Bitmap bell = art("belloff" + theme.key() + dark, () -> NotificationArt.bellOff(theme, dark));
                 PendingIntent off = acts.get(A_OFF_THIS), start = acts.get(A_EYES_START);
-                android.widget.RemoteViews small = offView(c, title, body, bell, off, start, false), big = offView(c, title, body, bell, off, start, true);
+                android.widget.RemoteViews small = offView(c, title, body, bell, off, start, false, countMs), big = offView(c, title, body, bell, off, start, true, countMs);
                 b.setStyle(new NotificationCompat.DecoratedCustomViewStyle()).setCustomContentView(small).setCustomBigContentView(big).setCustomHeadsUpContentView(small);
                 b.setLargeIcon((android.graphics.Bitmap) null);   // no picture at the top right: the text uses the full width
                 own = true;
             } catch (Exception e) { own = false; }
         }
+        if (!own && !pic && tag != null && tag.endsWith("test")) b.setLargeIcon((android.graphics.Bitmap) null);   // the test notification: no big logo, as in the newer notifications
         for (java.util.Map.Entry<String, PendingIntent> e : acts.entrySet()) {
             if (own && (A_OFF_THIS.equals(e.getKey()) || A_EYES_START.equals(e.getKey()))) continue;   // already in the app's own drawing
-            b.addAction(0, actionLabel(e.getKey()), e.getValue());
+            b.addAction(new NotificationCompat.Action.Builder(0, actionLabel(e.getKey()), e.getValue()).setAuthenticationRequired(false).build());   // works from the lock screen without unlocking
         }
         try {
             nm.notify(idFor(tag), b.build());
         } catch (SecurityException e) {
             Log.w(TAG, "notification permission missing");
+        } catch (Throwable t) {
+            // Anything else (for example a picture too large for the notification) must not stop the reminders after it:
+            // post the plain version and go on.
+            AlarmLog.add(c, "notify-failed:" + tag + ":" + t.getClass().getSimpleName());
+            try {
+                b.setStyle(null).setCustomContentView(null).setCustomBigContentView(null).setCustomHeadsUpContentView(null);
+                nm.notify(idFor(tag), b.build());
+            } catch (Throwable ignored) { }
         }
     }
 
@@ -647,23 +680,11 @@ final class ReminderScheduler {
     /** Start was tapped: the same notification now counts the 20 seconds down, quietly, then says they are done. */
     static void eyesStart(Context c, String tag, String title) {
         ensureChannels(c);
-        NotificationManagerCompat nm = NotificationManagerCompat.from(c);
-        if (!nm.areNotificationsEnabled()) return;
-        NotificationArt.Theme theme = NotificationArt.REMINDERS;
-        Intent open = new Intent(c, MainActivity.class).setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP)
-            .putExtra(EXTRA_KEY, "break").putExtra(EXTRA_SECTION, "alerts");
-        PendingIntent pi = PendingIntent.getActivity(c, idFor(tag), open, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-        NotificationCompat.Builder b = new NotificationCompat.Builder(c, CHANNEL_UPDATES)
-            .setSmallIcon(smallIcon(c))
-            .setContentTitle(title == null || title.isEmpty() ? "Eyes" : title)
-            .setContentText("Look 20 feet away until the time runs out.")
-            .setLargeIcon(art("logo" + theme.key(), () -> NotificationArt.logo(theme)))
-            .setColor(theme.deep).setContentIntent(pi).setAutoCancel(true)
-            .setOnlyAlertOnce(true).setSilent(true)
-            .setUsesChronometer(true).setChronometerCountDown(true).setWhen(System.currentTimeMillis() + 20000L).setShowWhen(true)
-            .setCategory(NotificationCompat.CATEGORY_PROGRESS).setPriority(NotificationCompat.PRIORITY_LOW)
-            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC);
-        try { nm.notify(idFor(tag), b.build()); } catch (SecurityException ignored) {}
+        if (!NotificationManagerCompat.from(c).areNotificationsEnabled()) return;
+        NotificationArt.Theme theme = NotificationArt.ROUTINES;   // Eyes belongs to Care
+        // The same notification as before (title, text, the bell) with the countdown where Start was
+        show(c, tag, title == null || title.isEmpty() ? "Eyes" : title, "Look 20 feet away until the time runs out.", true, theme, "alerts", "break",
+            new String[]{A_OFF_THIS}, false, "", 20000L);
         eyesDone(c, tag, title, theme, "alerts");
     }
     private static void eyesDone(Context c, String tag, String title, NotificationArt.Theme theme, String section) {
@@ -685,7 +706,7 @@ final class ReminderScheduler {
             boolean there = false;
             for (android.service.notification.StatusBarNotification s : nm.getActiveNotifications()) if (s.getId() == idFor(tag)) there = true;
             if (!there) return;
-            show(c, tag, title, "✓ 20 seconds done. Back to your screen.", true, NotificationArt.forSection(section), section, "break");
+            show(c, tag, title, "✓ 20 seconds done. Back to your screen.", true, NotificationArt.forKey(section, "break"), section, "break");
         } catch (Exception ignored) {}
     }
 }

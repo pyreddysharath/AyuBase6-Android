@@ -373,6 +373,15 @@ public class AyuRemindersPlugin extends Plugin {
         } else call.resolve(status());
     }
 
+    /** Android 14+: the page where "Full screen notifications" is allowed for AyuBase6 (alarm screen over the lock screen). */
+    @PluginMethod
+    public void openFullScreenSettings(PluginCall call) {
+        if (Build.VERSION.SDK_INT >= 34) {
+            openAndReturn(call, new Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT, Uri.parse("package:" + getContext().getPackageName())),
+                () -> ((android.app.NotificationManager) getContext().getSystemService(android.content.Context.NOTIFICATION_SERVICE)).canUseFullScreenIntent());
+        } else call.resolve(status());
+    }
+
     @PluginMethod
     public void openNotificationSettings(PluginCall call) {
         Intent i = new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, getContext().getPackageName());
