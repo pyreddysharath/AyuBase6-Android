@@ -518,7 +518,7 @@
       }
       var b = document.createElement('div'); b.className = 'ayu-upd-banner ayu-upd-dlg'; b.id = 'ayu-update-card'; b.setAttribute('role', 'alertdialog'); b.setAttribute('aria-modal', 'true'); b.setAttribute('aria-label', 'Update available');
       b.innerHTML = '<div class="ud-card"><div class="ud-grab"></div><div class="ud-head"><div class="ud-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 11l5 5 5-5M5 20h14"/></svg></div><div><b class="ud-t">Update available</b>'
-        + (state.selfInstall === false ? '<p class="ud-p">Tap Download to get it, then open the downloaded file.</p>' : '') + '</div></div>'
+        + (state.selfInstall === false ? '<p class="ud-p">Download and install.</p>' : '') + '</div></div>'
         + (state.selfInstall !== false && !state.autoUpdateGet() ? '<label class="appb-auto"><span>Update automatically next time</span><span class="master-switch"><input type="checkbox" class="appb-auto-sw" aria-label="Update automatically next time"></span></label>' : '')
         + '<div class="ud-btns"><button type="button" class="ud-later ayu-ec-later">Later</button><button type="button" class="ud-go ayu-ec-allow">Download</button></div></div>';
       b.querySelector('.ayu-ec-allow').addEventListener('click', function(){
