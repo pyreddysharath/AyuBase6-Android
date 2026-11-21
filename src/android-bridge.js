@@ -535,10 +535,24 @@
       });
       b.querySelector('.ayu-ec-later').addEventListener('click', function(){
         ls(UPD_KEY, JSON.stringify({ closed:true, v:String(cfg.versionCode), at:Date.now() })); gone();
-        noteBanner('You can update any time from <b>Backup &amp; Restore → App Updates</b>, in the footer.', 10000);
+        noteSheet('You can update any time from <b>Backup &amp; Restore → App Updates</b>, in the footer.', 10000);
       });
       document.body.appendChild(b); all.push(b);
     });
+  }
+
+  // The same note, at the bottom where the update window was (same card, no dimming), closes by itself
+  function noteSheet(html, ms){
+    var old = document.getElementById('ayu-update-note'); if(old) old.remove();
+    var b = document.createElement('div'); b.className = 'ayu-upd-dlg ayu-upd-notesheet'; b.id = 'ayu-update-note'; b.setAttribute('role', 'status');
+    b.style.cssText = 'background:transparent;pointer-events:none';
+    b.innerHTML = '<div class="ud-card" style="pointer-events:auto"><div class="ud-grab"></div><div class="ud-head"><div class="ud-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 11l5 5 5-5M5 20h14"/></svg></div><div><p class="ud-p" style="font-size:.86rem;color:#1e293b">' + html + '</p></div></div>'
+      + '<div class="ud-btns"><button type="button" class="ud-go">OK</button></div></div>';
+    var done = false;
+    function end(){ if(done) return; done = true; b.remove(); }
+    b.querySelector('.ud-go').addEventListener('click', end);
+    document.body.appendChild(b);
+    setTimeout(end, ms || 10000);
   }
 
   // A short note as a banner at the top of each tab, in that tab's colour (the website's "Get the app" banner style), with ×
