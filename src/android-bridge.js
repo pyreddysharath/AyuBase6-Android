@@ -502,23 +502,23 @@
       if(!document.getElementById('ayu-upd-dlg-css')){
         var cs = document.createElement('style'); cs.id = 'ayu-upd-dlg-css';
         cs.textContent = '.ayu-upd-dlg{position:fixed;inset:0;z-index:2147483000;display:flex;align-items:flex-end;justify-content:center;background:rgba(15,23,42,.5)}'
-          + '.ayu-upd-dlg .ud-card{width:min(520px,100%);max-height:calc(100vh - 36px);max-height:calc(100dvh - 36px);overflow:auto;box-sizing:border-box;background:#fff;color:#1e293b;border-radius:22px 22px 0 0;padding:10px 18px calc(18px + env(safe-area-inset-bottom,0px));box-shadow:0 -10px 40px rgba(0,0,0,.3);font:inherit}'
-          + '.ayu-upd-dlg .ud-grab{width:40px;height:4px;border-radius:4px;background:#cbd5e1;margin:0 auto 12px}'
-          + '.ayu-upd-dlg .ud-head{display:flex;gap:12px;align-items:center}'
-          + '.ayu-upd-dlg .ud-ic{flex:0 0 auto;width:46px;height:46px;border-radius:50%;background:color-mix(in srgb,var(--footer-accent,#0d9488) 16%,#fff);color:var(--footer-accent,#0d9488);display:flex;align-items:center;justify-content:center}'
-          + '.ayu-upd-dlg .ud-ic svg{width:24px;height:24px}'
-          + '.ayu-upd-dlg .ud-t{display:block;font-weight:800;font-size:1.1rem;color:var(--footer-accent,#0d9488)}'
-          + '.ayu-upd-dlg .ud-p{margin:2px 0 0;font-size:.88rem;line-height:1.35;color:#475569}'
-          + '.ayu-upd-dlg.ayu-upd-banner .appb-auto{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:12px 0 0;padding:8px 10px;border-radius:10px;background:#f1f5f9;color:#334155;font-size:.82rem;font-weight:800}'
-          + '.ayu-upd-dlg .ud-btns{display:flex;gap:8px;margin-top:12px}'
-          + '.ayu-upd-dlg .ud-btns button{border-radius:10px;padding:11px 18px;font:inherit;font-weight:800;cursor:pointer}'
+          + '.ayu-upd-dlg .ud-card{width:min(520px,100%);max-height:calc(100vh - 36px);max-height:calc(100dvh - 36px);overflow:auto;box-sizing:border-box;background:#fff;color:#1e293b;border-radius:18px 18px 0 0;padding:8px 14px calc(12px + env(safe-area-inset-bottom,0px));box-shadow:0 -10px 40px rgba(0,0,0,.3);font:inherit}'
+          + '.ayu-upd-dlg .ud-grab{width:40px;height:3px;border-radius:4px;background:#cbd5e1;margin:0 auto 8px}'
+          + '.ayu-upd-dlg .ud-head{display:flex;gap:10px;align-items:center}'
+          + '.ayu-upd-dlg .ud-ic{flex:0 0 auto;width:34px;height:34px;border-radius:50%;background:color-mix(in srgb,var(--footer-accent,#0d9488) 16%,#fff);color:var(--footer-accent,#0d9488);display:flex;align-items:center;justify-content:center}'
+          + '.ayu-upd-dlg .ud-ic svg{width:18px;height:18px}'
+          + '.ayu-upd-dlg .ud-t{display:block;font-weight:800;font-size:.98rem;color:var(--footer-accent,#0d9488)}'
+          + '.ayu-upd-dlg .ud-p{margin:0;font-size:.78rem;line-height:1.35;color:#475569}'
+          + '.ayu-upd-dlg.ayu-upd-banner .appb-auto{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:8px 0 0;padding:5px 9px;border-radius:10px;background:#f1f5f9;color:#334155;font-size:.76rem;font-weight:800}'
+          + '.ayu-upd-dlg .ud-btns{display:flex;gap:8px;margin-top:8px}'
+          + '.ayu-upd-dlg .ud-btns button{border-radius:10px;padding:7px 14px;font:inherit;font-size:.88rem;font-weight:800;cursor:pointer}'
           + '.ayu-upd-dlg .ud-later{flex:1;background:#fff;border:1.5px solid color-mix(in srgb,var(--footer-accent,#0d9488) 30%,#fff);color:var(--footer-accent,#0d9488)}'
           + '.ayu-upd-dlg .ud-go{flex:2;border:0;background:var(--footer-accent,#0d9488);color:#fff}';
         document.head.appendChild(cs);
       }
       var b = document.createElement('div'); b.className = 'ayu-upd-banner ayu-upd-dlg'; b.id = 'ayu-update-card'; b.setAttribute('role', 'alertdialog'); b.setAttribute('aria-modal', 'true'); b.setAttribute('aria-label', 'Update available');
-      b.innerHTML = '<div class="ud-card"><div class="ud-grab"></div><div class="ud-head"><div class="ud-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 11l5 5 5-5M5 20h14"/></svg></div><div><b class="ud-t">Update available</b><p class="ud-p">'
-        + (state.selfInstall === false ? 'Tap Download to get it, then open the downloaded file. Your data stays.' : 'Your data stays.') + '</p></div></div>'
+      b.innerHTML = '<div class="ud-card"><div class="ud-grab"></div><div class="ud-head"><div class="ud-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 11l5 5 5-5M5 20h14"/></svg></div><div><b class="ud-t">Update available</b>'
+        + (state.selfInstall === false ? '<p class="ud-p">Tap Download to get it, then open the downloaded file.</p>' : '') + '</div></div>'
         + (state.selfInstall !== false && !state.autoUpdateGet() ? '<label class="appb-auto"><span>Update automatically next time</span><span class="master-switch"><input type="checkbox" class="appb-auto-sw" aria-label="Update automatically next time"></span></label>' : '')
         + '<div class="ud-btns"><button type="button" class="ud-later ayu-ec-later">Later</button><button type="button" class="ud-go ayu-ec-allow">Download</button></div></div>';
       b.querySelector('.ayu-ec-allow').addEventListener('click', function(){
