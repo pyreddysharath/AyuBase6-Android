@@ -421,12 +421,16 @@
   }
   var storeP = P.getStatus().then(function(st){ screensCheck(st); if(st && st.selfInstall === false){ state.selfInstall = false; upd.viaBrowser = true; } return String((st && st.store) || 'website'); }, function(){ return 'website'; })
     .then(function(s){ state.store = upd.store = s; if(s === 'play'){ upd.latest = null; updEvent(); } return s; });
+  function fetchWithin(url, ms){
+    var ctl = (typeof AbortController === 'function') ? new AbortController() : null, t = setTimeout(function(){ try{ if(ctl) ctl.abort(); }catch(e){} }, ms);
+    return fetch(url, ctl ? { cache:'no-store', signal:ctl.signal } : { cache:'no-store' }).then(function(r){ clearTimeout(t); return r; }, function(e){ clearTimeout(t); throw e; });
+  }
   state.updateCheck = function(){
     if(state.store === 'play'){ upd.error = ''; upd.phase = ''; upd.latest = null; upd.checkedAt = Date.now(); updEvent(); return Promise.resolve(upd); }
     upd.error = ''; upd.phase = upd.phase === 'downloading' ? upd.phase : 'checking'; updEvent();
     return Promise.all([
       P.getStatus().catch(function(){ return {}; }),
-      fetch('config/android-app.json?t=' + Date.now(), { cache:'no-store' })   // the query skips the website's 10-minute cache
+      fetchWithin('config/android-app.json?t=' + Date.now(), 8000)   // the query skips the website's 10-minute cache; a stuck request gives up after 8 s and is tried again
      .then(function(r){ if(!r.ok) throw new Error('http'); return r.json(); })
     ]).then(function(v){
       upd.mine = { code:Number(v[0] && v[0].versionCode) || 0, name:String((v[0] && v[0].versionName) || '') };
@@ -510,9 +514,10 @@
   }
   function checkUpdate(n){
     n = +n || 0;   // called by timers and events too, which pass something else: counts the tries made after a failed check
+    if(!n){ var nw = Date.now(); if(nw - (state._chkAt || 0) < 3000) return; state._chkAt = nw; }   // several events at once (opening, focus, shown again): one check
     storeP.then(function(s){ if(s !== 'play') return state.updateCheck(); }).then(function(){
       if(state.store === 'play') return;
-      if(upd.error && n < 4){ setTimeout(function(){ checkUpdate(n + 1); }, [1500, 4000, 10000, 30000][n]); return; }   // right after the app starts the phone's network may not be ready: try again
+      if(upd.error && n < 6){ setTimeout(function(){ checkUpdate(n + 1); }, [1500, 4000, 10000, 30000, 60000, 120000][n]); return; }   // right after the app starts the phone's network may not be ready: try again
       var cfg = upd.latest; if(!cfg) return;
       if(state.autoUpdateGet() && state.selfInstall !== false && typeof P.updateDownload === 'function' && ls(AUTO_TRIED) !== String(cfg.versionCode)){
         ls(AUTO_TRIED, String(cfg.versionCode)); document.querySelectorAll('.ayu-upd-banner').forEach(function(b){ b.remove(); });
@@ -724,6 +729,8 @@
     setTimeout(checkUpdate, 200);   // an update shows as soon as the app opens
     document.addEventListener('visibilitychange', function(){ if(!document.hidden) setTimeout(checkUpdate, 300); });
     window.addEventListener('online', function(){ setTimeout(checkUpdate, 300); });
+    window.addEventListener('pageshow', function(){ setTimeout(checkUpdate, 500); });
+    window.addEventListener('focus', function(){ setTimeout(checkUpdate, 800); });
   }
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once:true }); else start();
 })();
