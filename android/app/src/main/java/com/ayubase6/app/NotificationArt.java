@@ -32,7 +32,8 @@ final class NotificationArt {
 
     static final Theme MIND = new Theme(c("#f3f1ff"), c("#e5dfff"), c("#a5b4fc"), c("#6250b3"), c("#6250b3"), c("#4a3a96"));   // Mind: indigo
 
-    static final Theme LOGO = new Theme(c("#e9edff"), c("#fde4ee"), c("#5eead4"), c("#6d7cf0"), c("#818cf8"), c("#e8607a"));   // the logo's blue, pink and teal (Test notification)
+    static final int[] LOGO_PETALS = {0xFF60A5FA, 0xFF86EFAC, 0xFFA5B4FC, 0xFF67E8F9, 0xFFFB7A98, 0xFF5EEAD4};   // the logo's six petals, left to right
+    static final Theme LOGO = new Theme(c("#ffffff"), c("#eef2ff"), c("#5eead4"), c("#6d7cf0"), c("#ffffff"), c("#eef2ff"));   // Test notification: white card, six-colour lotus
 
     static Theme forSection(String section) { return "routines".equals(section) ? ROUTINES : REMINDERS; }
     /** Care (coral pink) holds My Day Plan and the Health Breaks (Eyes, Walk, Water, Posture, Stretch, Breathing, Eye Exercise); Reminders (teal) the rest. */
@@ -70,12 +71,14 @@ final class NotificationArt {
         p.close();
         return p;
     }
-    private static void lotus(Canvas cv, float cx, float cy, float scale, int fill, float alpha) {
+    private static void lotus(Canvas cv, float cx, float cy, float scale, int fill, float alpha) { lotus(cv, cx, cy, scale, new int[]{fill, fill, fill, fill, fill, fill}, alpha); }
+    private static void lotus(Canvas cv, float cx, float cy, float scale, int[] fills, float alpha) {
         Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        paint.setColor(fill);
-        paint.setAlpha(Math.round(alpha * 255));
         Path p = petal();
-        for (int a : new int[]{-75, -45, -15, 15, 45, 75}) {
+        int[] angles = {-75, -45, -15, 15, 45, 75};
+        for (int i = 0; i < 6; i++) {
+            int a = angles[i];
+            paint.setColor(fills[i]); paint.setAlpha(Math.round(alpha * 255));
             cv.save(); cv.translate(cx, cy); cv.rotate(a); cv.scale(scale, scale); cv.drawPath(p, paint); cv.restore();
         }
     }
@@ -140,7 +143,7 @@ final class NotificationArt {
         Paint bg = new Paint(Paint.ANTI_ALIAS_FLAG);
         bg.setShader(new LinearGradient(0, 0, s, s, t.ic0, t.ic1, Shader.TileMode.CLAMP));
         cv.drawRoundRect(new RectF(0, 0, s, s), 44, 44, bg);
-        lotus(cv, 96, 142, 3.7f, Color.WHITE, .96f);
+        if (t == LOGO) lotus(cv, 96, 142, 3.7f, LOGO_PETALS, 1f); else lotus(cv, 96, 142, 3.7f, Color.WHITE, .96f);
         return b;
     }
 
@@ -152,6 +155,7 @@ final class NotificationArt {
         bg.setShader(new LinearGradient(0, 0, w, h, t.g0, t.g1, Shader.TileMode.CLAMP));
         cv.drawRect(0, 0, w, h, bg);   // square edges: the colour fills the whole notification area, edge to edge
         float k = h / 360f;
+        if (t == LOGO) { lotus(cv, w - 250 * k, h * .93f, 14.5f * k, LOGO_PETALS, .55f); lotus(cv, w * .42f, h, 6.5f * k, 0xFF94A3B8, .22f); return b; }
         lotus(cv, w - 250 * k, h * .93f, 14.5f * k, t.big, .55f);
         lotus(cv, w * .42f, h, 6.5f * k, t.deep, .14f);
         return b;
