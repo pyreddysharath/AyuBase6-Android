@@ -32,10 +32,13 @@ final class NotificationArt {
 
     static final Theme MIND = new Theme(c("#f3f1ff"), c("#e5dfff"), c("#a5b4fc"), c("#6250b3"), c("#6250b3"), c("#4a3a96"));   // Mind: indigo
 
+    static final Theme LOGO = new Theme(c("#e9edff"), c("#fde4ee"), c("#5eead4"), c("#6d7cf0"), c("#818cf8"), c("#e8607a"));   // the logo's blue, pink and teal (Test notification)
+
     static Theme forSection(String section) { return "routines".equals(section) ? ROUTINES : REMINDERS; }
     /** Care (coral pink) holds My Day Plan and the Health Breaks (Eyes, Walk, Water, Posture, Stretch, Breathing, Eye Exercise); Reminders (teal) the rest. */
     static Theme forKey(String section, String key) {
         if ("mind".equals(key)) return MIND;
+        if ("test".equals(key)) return LOGO;
         if (key != null && key.matches("break|walk|drink|posture|stretch|breathe|eyeex")) return ROUTINES;
         return forSection(section);
     }
