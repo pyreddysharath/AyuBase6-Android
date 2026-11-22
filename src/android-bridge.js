@@ -484,21 +484,8 @@
   var AUTO_KEY = 'ayuAutoUpdate', AUTO_TRIED = 'ayuAutoUpdateTried';
   state.autoUpdateGet = function(){ return ls(AUTO_KEY) === '1'; };
   state.autoUpdateSet = function(on){ ls(AUTO_KEY, on ? '1' : '0'); if(on) setTimeout(checkUpdate, 50); updEvent(); };
-  function checkUpdate(n){
-    n = +n || 0;   // called by timers and events too, which pass something else: counts the tries made after a failed check
-    storeP.then(function(s){ if(s !== 'play') return state.updateCheck(); }).then(function(){
-      if(state.store === 'play') return;
-      if(upd.error && n < 4){ setTimeout(function(){ checkUpdate(n + 1); }, [1500, 4000, 10000, 30000][n]); return; }   // right after the app starts the phone's network may not be ready: try again
-      var cfg = upd.latest; if(!cfg) return;
-      if(state.autoUpdateGet() && state.selfInstall !== false && typeof P.updateDownload === 'function' && ls(AUTO_TRIED) !== String(cfg.versionCode)){
-        ls(AUTO_TRIED, String(cfg.versionCode)); document.querySelectorAll('.ayu-upd-banner').forEach(function(b){ b.remove(); });
-        state.updateStart(); return;   // one try for each version; if it fails, the banner and App Updates show Update as usual
-      }
-      if(laterHidden(cfg.versionCode)) return;
-      if(document.querySelector('.ayu-upd-banner')) return;
-      // A pop-up in the middle of the screen, so it is seen wherever the person is on the page: what is new, Update, Later
-      var all = [];
-      function gone(){ all.forEach(function(b){ b.remove(); }); ls('ayuUpdAck', String(cfg.versionCode)); try{ if(window.ayuDotsEnforce) window.ayuDotsEnforce(); }catch(e){} }   // used: the dots for this update go
+  // The bottom pop-up styles (Update available, notes, and the full-screen alarm notice)
+  function dlgCss(){
       if(!document.getElementById('ayu-upd-dlg-css')){
         var cs = document.createElement('style'); cs.id = 'ayu-upd-dlg-css';
         cs.textContent = '.ayu-upd-dlg{position:fixed;inset:0;z-index:2147483000;display:flex;align-items:flex-end;justify-content:center;background:rgba(15,23,42,.5)}'
@@ -520,6 +507,23 @@
           + '.ayu-upd-dlg .ud-go{flex:2;border:0;background:var(--footer-accent,#0d9488);color:#fff}';
         document.head.appendChild(cs);
       }
+  }
+  function checkUpdate(n){
+    n = +n || 0;   // called by timers and events too, which pass something else: counts the tries made after a failed check
+    storeP.then(function(s){ if(s !== 'play') return state.updateCheck(); }).then(function(){
+      if(state.store === 'play') return;
+      if(upd.error && n < 4){ setTimeout(function(){ checkUpdate(n + 1); }, [1500, 4000, 10000, 30000][n]); return; }   // right after the app starts the phone's network may not be ready: try again
+      var cfg = upd.latest; if(!cfg) return;
+      if(state.autoUpdateGet() && state.selfInstall !== false && typeof P.updateDownload === 'function' && ls(AUTO_TRIED) !== String(cfg.versionCode)){
+        ls(AUTO_TRIED, String(cfg.versionCode)); document.querySelectorAll('.ayu-upd-banner').forEach(function(b){ b.remove(); });
+        state.updateStart(); return;   // one try for each version; if it fails, the banner and App Updates show Update as usual
+      }
+      if(laterHidden(cfg.versionCode)) return;
+      if(document.querySelector('.ayu-upd-banner')) return;
+      // A pop-up in the middle of the screen, so it is seen wherever the person is on the page: what is new, Update, Later
+      var all = [];
+      function gone(){ all.forEach(function(b){ b.remove(); }); ls('ayuUpdAck', String(cfg.versionCode)); try{ if(window.ayuDotsEnforce) window.ayuDotsEnforce(); }catch(e){} }   // used: the dots for this update go
+      dlgCss();
       var b = document.createElement('div'); b.className = 'ayu-upd-banner ayu-upd-dlg'; b.id = 'ayu-update-card'; b.setAttribute('role', 'alertdialog'); b.setAttribute('aria-modal', 'true'); b.setAttribute('aria-label', 'Update available');
       b.innerHTML = '<div class="ud-card"><div class="ud-grab"></div><div class="ud-head"><div class="ud-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 11l5 5 5-5M5 20h14"/></svg></div><div><b class="ud-t">Update available</b>'
         + (state.selfInstall === false ? '<p class="ud-p">Download and install.</p>' : '') + '</div></div>'
@@ -544,6 +548,31 @@
       document.body.appendChild(b); all.push(b);
     });
   }
+
+  // After an update Android turns "full-screen alarms" off again (apps outside Google Play). Once for each app version, if an alarm is
+  // already set: the same pop-up as "Update available", in the colour of the section. Allow opens Android's own switch.
+  function fsNotice(tries){
+    tries = tries || 0;
+    if(typeof P.soundCheck !== 'function' || typeof P.getStatus !== 'function') return;
+    P.getStatus().then(function(st){
+      var ver = String((st && st.versionCode) || ''); if(!ver || ls('ayuFsSeen') === ver) return;
+      if(document.querySelector('.ayu-upd-dlg') && tries < 6){ setTimeout(function(){ fsNotice(tries + 1); }, 5000); return; }   // one pop-up at a time
+      return P.soundCheck().then(function(r){
+        var list = []; try{ list = window.ayuAlarmList ? window.ayuAlarmList() : []; }catch(e){}
+        if(!r || r.fullScreen !== false){ ls('ayuFsSeen', ver); return; }   // on already (or not asked by this Android)
+        if(!list.length){ ls('ayuFsSeen', ver); return; }                   // no alarm set: nothing to open full-screen
+        dlgCss(); ls('ayuFsSeen', ver);
+        var b = document.createElement('div'); b.className = 'ayu-upd-dlg ayu-fs-dlg'; b.id = 'ayu-fs-card'; b.setAttribute('role', 'alertdialog'); b.setAttribute('aria-modal', 'true'); b.setAttribute('aria-label', 'Full-screen alarms are off');
+        b.innerHTML = '<div class="ud-card"><div class="ud-grab"></div><div class="ud-head"><div class="ud-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22a2 2 0 0 0 2-2h-4a2 2 0 0 0 2 2zM18 16v-5a6 6 0 0 0-12 0v5l-2 2h16z"/></svg></div><div><b class="ud-t">Full-screen alarms are off</b>'
+          + '<p class="ud-p">After the update, Android turned this off. Allow it so alarms open over your locked phone.</p></div></div>'
+          + '<div class="ud-btns"><button type="button" class="ud-later">Later</button><button type="button" class="ud-go">Allow</button></div></div>';
+        b.querySelector('.ud-later').addEventListener('click', function(){ b.remove(); });
+        b.querySelector('.ud-go').addEventListener('click', function(){ b.remove(); state.openFullScreen(); });
+        document.body.appendChild(b);
+      });
+    }).catch(noop);
+  }
+  setTimeout(function(){ fsNotice(0); }, 7000);
 
   // The same note, at the bottom where the update window was (same card, no dimming), closes by itself
   function noteSheet(html, ms){
