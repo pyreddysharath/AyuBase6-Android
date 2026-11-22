@@ -564,7 +564,7 @@
         dlgCss(); ls('ayuFsSeen', ver);
         var b = document.createElement('div'); b.className = 'ayu-upd-dlg ayu-fs-dlg'; b.id = 'ayu-fs-card'; b.setAttribute('role', 'alertdialog'); b.setAttribute('aria-modal', 'true'); b.setAttribute('aria-label', 'Full-screen alarms are off');
         b.innerHTML = '<div class="ud-card"><div class="ud-grab"></div><div class="ud-head"><div class="ud-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22a2 2 0 0 0 2-2h-4a2 2 0 0 0 2 2zM18 16v-5a6 6 0 0 0-12 0v5l-2 2h16z"/></svg></div><div><b class="ud-t">Full-screen alarms are off</b>'
-          + '<p class="ud-p">After the update, Android turned this off. Allow it so alarms open over your locked phone.</p></div></div>'
+          + '<p class="ud-p">Android turned this off after the update. Allow it so alarms open on a locked phone.</p></div></div>'
           + '<div class="ud-btns"><button type="button" class="ud-later">Later</button><button type="button" class="ud-go">Allow</button></div></div>';
         b.querySelector('.ud-later').addEventListener('click', function(){ b.remove(); });
         b.querySelector('.ud-go').addEventListener('click', function(){ b.remove(); state.openFullScreen(); });
