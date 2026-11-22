@@ -564,6 +564,7 @@
       if(document.querySelector('.ayu-upd-dlg') && tries < 6){ setTimeout(function(){ fsNotice(tries + 1); }, 5000); return; }   // one pop-up at a time
       return P.soundCheck().then(function(r){
         var list = []; try{ list = window.ayuAlarmList ? window.ayuAlarmList() : []; }catch(e){}
+        if(!list.length && tries < 4 && r && r.fullScreen === false){ setTimeout(function(){ fsNotice(tries + 1); }, 1500); return; }   // alarms may still be loading
         if(!r || r.fullScreen !== false){ ls('ayuFsSeen', ver); return; }   // on already (or not asked by this Android)
         if(!list.length){ ls('ayuFsSeen', ver); return; }                   // no alarm set: nothing to open full-screen
         dlgCss(); ls('ayuFsSeen', ver);
@@ -577,7 +578,7 @@
       });
     }).catch(noop);
   }
-  setTimeout(function(){ fsNotice(0); }, 7000);
+  setTimeout(function(){ fsNotice(0); }, 1200);
 
   // The same note, at the bottom where the update window was (same card, no dimming), closes by itself
   function noteSheet(html, ms){
