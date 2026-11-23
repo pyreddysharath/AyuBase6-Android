@@ -341,8 +341,8 @@
   }
   function showBlockedCard(){
     var card = document.getElementById('ayu-blocked-card');
-    var later = Number(ls(BLOCK_KEY)) || 0;
-    var want = perm === 'denied' && wantsNotifications() && Date.now() - later > 3 * 86400000 && document.body;
+    if(perm !== 'denied' && ls(BLOCK_KEY)) ls(BLOCK_KEY, '');   // allowed again: a later block asks again
+    var want = perm === 'denied' && wantsNotifications() && !ls(BLOCK_KEY) && document.body;   // "Later" is final
     if(!want){ if(card) card.remove(); return; }
     if(card) return;
     var ex = document.getElementById('ayu-exact-card'); if(ex) ex.remove();
@@ -351,18 +351,30 @@
     card.innerHTML = '<div class="ayu-ec-text"><b>Notifications are off</b><span>Turn on notifications for AyuBase6 to get your reminders. The app comes back here once they are on.</span></div>'
       + '<button type="button" class="ayu-ec-later ayu-ec-x" aria-label="Close" title="Close">×</button><div class="ayu-ec-btns"><button type="button" class="ayu-ec-allow">Open settings</button></div>';
     card.querySelector('.ayu-ec-allow').onclick = function(){ P.openNotificationSettings().catch(noop); };
-    card.querySelector('.ayu-ec-later').onclick = function(){ ls(BLOCK_KEY, String(Date.now())); card.remove(); };
+    card.querySelector('.ayu-ec-later').onclick = function(){ ls(BLOCK_KEY, 'done'); card.remove(); };
     document.body.appendChild(card);
   }
   // Allowed in Android settings: the phone brings the app back and tells us; refresh everything at once.
   try{ P.addListener('permissionsChanged', function(){ refreshStatus().then(function(){ sync(true); }); }); }catch(e){}
 
   // ── "Alarms & reminders" permission: without it Android may deliver reminders some minutes late ──
+  // Asking for a permission: only when it was on before and is off now (an update can turn it off), or never asked yet.
+  // "Later" on its card is final. Turning the permission on starts it fresh, so a later reset asks again.
+  function permAsk(name, on, active){
+    var AK = 'ayuAsk_' + name, LK = 'ayuLast_' + name, ask = ls(AK), last = ls(LK);
+    if(on){ if(ask) ls(AK, ''); ls(LK, 'on'); return false; }
+    if(!active) return false;                   // no alarm or reminder set: nothing to ask for
+    if(ask === 'done') return false;            // "Later" was tapped: that is the answer
+    if(ask === 'open') return true;             // asked already and not answered: keep asking until Later or allowed
+    if(last === 'off'){ ls(AK, 'done'); return false; }   // it was off already before (the person's choice): not asked
+    ls(AK, 'open'); ls(LK, 'off'); return true; // it was on, or never seen: ask now
+  }
+  // ── "Alarms & reminders" permission: without it Android may deliver reminders some minutes late ──
   var CARD_KEY = 'ayuAndroidExactLater';
   function showExactCard(){
     var card = document.getElementById('ayu-exact-card');
-    var later = Number(ls(CARD_KEY)) || 0;
-    var want = state.active && !state.exact && Date.now() - later > 3 * 86400000 && document.body && !document.getElementById('ayu-blocked-card');
+    if(ls(CARD_KEY) && !ls('ayuAsk_exact')){ ls('ayuAsk_exact', 'done'); }   // a "Later" from an older version counts as the answer
+    var want = permAsk('exact', state.exact, state.active) && document.body && !document.getElementById('ayu-blocked-card');
     if(!want){ if(card) card.remove(); return; }
     if(card) return;
     card = document.createElement('div');
@@ -370,7 +382,7 @@
     card.innerHTML = '<div class="ayu-ec-text"><b>Reminders on time</b><span>Allow “Alarms &amp; reminders” for AyuBase6 so reminders arrive at the exact minute.</span></div>'
       + '<button type="button" class="ayu-ec-later ayu-ec-x" aria-label="Close" title="Close">×</button><div class="ayu-ec-btns"><button type="button" class="ayu-ec-allow">Allow</button></div>';
     card.querySelector('.ayu-ec-allow').onclick = function(){ P.openExactAlarmSettings().catch(noop); };
-    card.querySelector('.ayu-ec-later').onclick = function(){ ls(CARD_KEY, String(Date.now())); card.remove(); };
+    card.querySelector('.ayu-ec-later').onclick = function(){ ls('ayuAsk_exact', 'done'); card.remove(); };
     document.body.appendChild(card);
   }
   function addStyle(){
@@ -555,28 +567,27 @@
     });
   }
 
-  // After an update Android turns "full-screen alarms" off again (apps outside Google Play). Once for each app version, if an alarm is
-  // already set: the same pop-up as "Update available", in the colour of the section. Allow opens Android's own switch.
+  // After an update Android may turn "full-screen alarms" off again (apps outside Google Play). If an alarm is set and it was on before
+  // (or never asked): the same pop-up as "Update available", in the colour of the section. Allow opens Android's own switch.
+  // "Later" is final; the warning on the Alarms page stays while it is off.
   function fsNotice(tries){
     tries = tries || 0;
-    if(typeof P.soundCheck !== 'function' || typeof P.getStatus !== 'function') return;
-    P.getStatus().then(function(st){
-      var ver = String((st && st.versionCode) || ''); if(!ver || ls('ayuFsSeen') === ver) return;
-      if(document.querySelector('.ayu-upd-dlg') && tries < 6){ setTimeout(function(){ fsNotice(tries + 1); }, 5000); return; }   // one pop-up at a time
-      return P.soundCheck().then(function(r){
-        var list = []; try{ list = window.ayuAlarmList ? window.ayuAlarmList() : []; }catch(e){}
-        if(!list.length && tries < 4 && r && r.fullScreen === false){ setTimeout(function(){ fsNotice(tries + 1); }, 1500); return; }   // alarms may still be loading
-        if(!r || r.fullScreen !== false){ ls('ayuFsSeen', ver); return; }   // on already (or not asked by this Android)
-        if(!list.length){ ls('ayuFsSeen', ver); return; }                   // no alarm set: nothing to open full-screen
-        dlgCss(); ls('ayuFsSeen', ver);
-        var b = document.createElement('div'); b.className = 'ayu-upd-dlg ayu-fs-dlg'; b.id = 'ayu-fs-card'; b.setAttribute('role', 'alertdialog'); b.setAttribute('aria-modal', 'true'); b.setAttribute('aria-label', 'Full-screen alarms are off');
-        b.innerHTML = '<div class="ud-card"><div class="ud-grab"></div><div class="ud-head"><div class="ud-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22a2 2 0 0 0 2-2h-4a2 2 0 0 0 2 2zM18 16v-5a6 6 0 0 0-12 0v5l-2 2h16z"/></svg></div><div><b class="ud-t">Full-screen alarms are off</b>'
-          + '<p class="ud-p">Android turned this off after the update. Allow it so alarms open on a locked phone.</p></div></div>'
-          + '<div class="ud-btns"><button type="button" class="ud-later">Later</button><button type="button" class="ud-go">Allow</button></div></div>';
-        b.querySelector('.ud-later').addEventListener('click', function(){ b.remove(); });
-        b.querySelector('.ud-go').addEventListener('click', function(){ b.remove(); state.openFullScreen(); });
-        document.body.appendChild(b);
-      });
+    if(typeof P.soundCheck !== 'function') return;
+    if(document.querySelector('.ayu-upd-dlg') && tries < 6){ setTimeout(function(){ fsNotice(tries + 1); }, 5000); return; }   // one pop-up at a time
+    P.soundCheck().then(function(r){
+      if(!r || typeof r.fullScreen !== 'boolean') return;   // not asked by this Android
+      var list = []; try{ list = window.ayuAlarmList ? window.ayuAlarmList() : []; }catch(e){}
+      if(!list.length && tries < 4 && r.fullScreen === false){ setTimeout(function(){ fsNotice(tries + 1); }, 1500); return; }   // alarms may still be loading
+      if(!permAsk('fs', r.fullScreen, list.length > 0)) return;
+      if(document.getElementById('ayu-fs-card')) return;
+      dlgCss();
+      var b = document.createElement('div'); b.className = 'ayu-upd-dlg ayu-fs-dlg'; b.id = 'ayu-fs-card'; b.setAttribute('role', 'alertdialog'); b.setAttribute('aria-modal', 'true'); b.setAttribute('aria-label', 'Full-screen alarms are off');
+      b.innerHTML = '<div class="ud-card"><div class="ud-grab"></div><div class="ud-head"><div class="ud-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22a2 2 0 0 0 2-2h-4a2 2 0 0 0 2 2zM18 16v-5a6 6 0 0 0-12 0v5l-2 2h16z"/></svg></div><div><b class="ud-t">Full-screen alarms are off</b>'
+        + '<p class="ud-p">Full-screen alarms are off for AyuBase6. Allow it so alarms open on a locked phone.</p></div></div>'
+        + '<div class="ud-btns"><button type="button" class="ud-later">Later</button><button type="button" class="ud-go">Allow</button></div></div>';
+      b.querySelector('.ud-later').addEventListener('click', function(){ ls('ayuAsk_fs', 'done'); b.remove(); });
+      b.querySelector('.ud-go').addEventListener('click', function(){ b.remove(); state.openFullScreen(); });
+      document.body.appendChild(b);
     }).catch(noop);
   }
   setTimeout(function(){ fsNotice(0); }, 1200);
@@ -663,6 +674,7 @@
       try{ if(typeof switchTab === 'function') switchTab(section); }catch(e){}
       try{ if(typeof nudgeShowSection === 'function') nudgeShowSection(key); }catch(e){}
     }
+    if(section === 'perm') return;   // "Allow alarms" note: the app opens and its Allow card shows at once
     if(section === 'update'){   // a new version, found by the background check
       try{ setTimeout(function(){ if(typeof window.showFooterSection === 'function') window.showFooterSection('backup'); if(typeof window.showFooterSub === 'function') window.showFooterSub('backup','app'); }, 300); }catch(e){}
       return;

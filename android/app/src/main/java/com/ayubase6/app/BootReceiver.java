@@ -14,7 +14,7 @@ public class BootReceiver extends BroadcastReceiver {
         final Context app = context.getApplicationContext();
         final PendingResult done = goAsync();
         new Thread(() -> {
-            try { ReminderScheduler.reschedule(app); try { ClockNotifier.refresh(app); } catch (Exception ignored) {} try { AnnouncementCheck.schedule(app); } catch (Exception ignored) {} try { UpdateCheck.schedule(app); } catch (Exception ignored) {} }
+            try { ReminderScheduler.reschedule(app); try { ClockNotifier.refresh(app); } catch (Exception ignored) {} try { AnnouncementCheck.schedule(app); } catch (Exception ignored) {} try { UpdateCheck.schedule(app); } catch (Exception ignored) {} if (Intent.ACTION_MY_PACKAGE_REPLACED.equals(intent.getAction())) PermWatch.afterUpdate(app); }
             finally { done.finish(); }
         }, "ayu-boot").start();
     }

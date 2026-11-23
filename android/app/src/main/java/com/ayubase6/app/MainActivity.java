@@ -42,6 +42,7 @@ public class MainActivity extends BridgeActivity {
     @Override public void onResume() {
         super.onResume(); AnnouncementCheck.appVisible = true;
         try { ReminderScheduler.cancel(this, AyuRemindersPlugin.BACK_TAG); } catch (Exception ignored) {}   // back in the app: the "Tap to return" note goes
+        PermWatch.noteOpen(this);   // remember Alarms & reminders / full-screen alarms; the "allow alarms" note and its timer go
     }
     @Override public void onPause() { AnnouncementCheck.appVisible = false; super.onPause(); }
 
