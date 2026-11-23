@@ -280,13 +280,25 @@ public class AyuRemindersPlugin extends Plugin {
         else if ((color == null || color.isEmpty()) && !"test".equals(call.getString("tapKey", ""))) { String fk = (like != null && !like.isEmpty()) ? like : call.getString("tapKey", "").replaceFirst("^preview-", ""); theme = NotificationArt.forKey(call.getString("section", ""), fk); }   // the section's own colour, also for previews
         if (like != null && !like.isEmpty()) {   // Preview notification: the real buttons of that reminder; tapping one only closes the preview
             ReminderScheduler.show(getContext(), key, call.getString("title", "AyuBase6"), call.getString("body", ""),
-                false, theme, call.getString("section", ""), "preview:" + like, ReminderScheduler.actionsFor(like),
-                !Boolean.FALSE.equals(call.getBoolean("vibrate", true)));   // vibrates only when that reminder's Vibrate switch is on
+                false, theme, call.getString("section", ""), "preview:" + like, ReminderScheduler.actionsFor(like), false);   // no channel vibration: the preview vibrates itself below
+            if (!Boolean.FALSE.equals(call.getBoolean("vibrate", true))) previewVibrate();   // only when that reminder's Vibrate switch is on
         } else {
             ReminderScheduler.show(getContext(), key, call.getString("title", "AyuBase6"), call.getString("body", ""),
                 Boolean.TRUE.equals(call.getBoolean("silent", false)), theme, call.getString("section", ""), call.getString("tapKey", ""));
         }
         call.resolve();
+    }
+
+    /** One short vibration for a preview notification, whatever the notification channel's own settings are. */
+    private void previewVibrate() {
+        try {
+            android.os.Vibrator v = (android.os.Vibrator) getContext().getSystemService(android.content.Context.VIBRATOR_SERVICE);
+            if (v == null || !v.hasVibrator()) return;
+            long[] pattern = {0, 200, 100, 200, 100, 200};
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) v.vibrate(android.os.VibrationEffect.createWaveform(pattern, -1),
+                new android.media.AudioAttributes.Builder().setUsage(android.media.AudioAttributes.USAGE_ALARM).build());
+            else v.vibrate(pattern, -1);
+        } catch (Exception ignored) { }
     }
 
     /** Preview of an alarm or the timer: its real notification (colours, Snooze / Stop), sound and vibration, for up to 30 seconds. */
