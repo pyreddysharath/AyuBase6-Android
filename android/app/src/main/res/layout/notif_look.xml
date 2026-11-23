@@ -2,7 +2,7 @@
 <!-- Reminder text with a section-colour bar beside it (nl_bar) or a soft panel behind it (nl_panel); the colours are set in code. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
-    <View android:id="@+id/nl_bar" android:layout_width="4dp" android:layout_height="match_parent"
+    <FrameLayout android:id="@+id/nl_bar" android:layout_width="4dp" android:layout_height="match_parent"
         android:layout_marginEnd="8dp" android:visibility="gone" />
     <LinearLayout android:id="@+id/nl_panel" android:layout_width="0dp" android:layout_height="wrap_content"
         android:layout_weight="1" android:orientation="vertical">
