@@ -478,19 +478,13 @@ final class ReminderScheduler {
                 own = true;
             } catch (Exception e) { own = false; }
         }
-        if (!own && !pic && ("mind".equals(tapKey) || "preview:mind".equals(tapKey))) {   // Mind: the thought as a quote, with no "Mind" title
-            try {
-                RemoteViews mv = new RemoteViews(c.getPackageName(), R.layout.notif_mind);
+        if (!own && !pic) {
+            if ("mind".equals(tapKey) || "preview:mind".equals(tapKey)) {   // Mind: the thought as a quote, in the chosen notification look
                 String thought = (body == null || body.isEmpty()) ? (title == null ? "" : title) : body;
-                mv.setTextViewText(R.id.nm_text, thought);
-                
-                mv.setTextColor(R.id.nm_title, NotificationArt.titleColor(c, theme));
-                mv.setTextColor(R.id.nm_mark, theme.big);
-                b.setContentTitle("Mind").setContentText(thought).setStyle(new NotificationCompat.DecoratedCustomViewStyle())
-                    .setCustomContentView(mv).setCustomBigContentView(mv).setCustomHeadsUpContentView(mv);
-            } catch (Exception e) { /* keep the standard notification */ }
+                b.setContentTitle("Mind").setContentText(thought);
+                sectionTitle(c, b, theme, "Mind", "\u201C" + thought + "\u201D", 2);
+            } else sectionTitle(c, b, theme, checks ? noTime(title) : title, body);
         }
-        if (!own && !pic && !("mind".equals(tapKey) || "preview:mind".equals(tapKey))) sectionTitle(c, b, theme, checks ? noTime(title) : title, body);
         if (!own && !pic && tag != null && tag.endsWith("test")) b.setLargeIcon((android.graphics.Bitmap) null);   // the test notification: no big logo, as in the newer notifications
         for (java.util.Map.Entry<String, PendingIntent> e : acts.entrySet()) {
             if (own && (A_OFF_THIS.equals(e.getKey()) || A_EYES_START.equals(e.getKey()))) continue;   // already in the app's own drawing
@@ -512,13 +506,14 @@ final class ReminderScheduler {
     }
 
     /** Title in the section colour (light shade in dark mode), text in the system colour: the app draws the notification text. */
-    static void sectionTitle(Context c, NotificationCompat.Builder b, NotificationArt.Theme t, String title, String body) {
+    static void sectionTitle(Context c, NotificationCompat.Builder b, NotificationArt.Theme t, String title, String body) { sectionTitle(c, b, t, title, body, 1); }
+    static void sectionTitle(Context c, NotificationCompat.Builder b, NotificationArt.Theme t, String title, String body, int smallLines) {
         try {
             int col = NotificationArt.titleColor(c, t);
             String look = NotifLook.get(c);
             RemoteViews small, big;
-            if ("title".equals(look)) { small = stdView(c, col, title, body, 2); big = stdView(c, col, title, body, 8); }
-            else { small = lookView(c, t, look, col, title, body, 1, false); big = lookView(c, t, look, col, title, body, 8, true); }
+            if ("title".equals(look)) { small = stdView(c, col, title, body, Math.max(2, smallLines)); big = stdView(c, col, title, body, 8); }
+            else { small = lookView(c, t, look, col, title, body, smallLines, false); big = lookView(c, t, look, col, title, body, 8, true); }
             b.setStyle(new NotificationCompat.DecoratedCustomViewStyle()).setCustomContentView(small).setCustomBigContentView(big).setCustomHeadsUpContentView(small);
         } catch (Exception e) { /* keep the standard notification */ }
     }
