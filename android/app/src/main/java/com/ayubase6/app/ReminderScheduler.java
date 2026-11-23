@@ -126,6 +126,7 @@ final class ReminderScheduler {
             .setUsesChronometer(true).setChronometerCountDown(true).setWhen(ms).setShowWhen(true)
             .setCategory(NotificationCompat.CATEGORY_ALARM).setPriority(NotificationCompat.PRIORITY_LOW)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC);
+        sectionTitle(c, b, theme, "Alarm at " + when, "Alarm".equals(name) || name.isEmpty() ? "Upcoming alarm" : name);
         try { nm.notify(idFor(UPCOMING_TAG), b.build()); } catch (SecurityException ignored) {}
     }
 
@@ -468,6 +469,7 @@ final class ReminderScheduler {
                 android.graphics.Bitmap bell = art("belloff" + theme.key() + dark, () -> NotificationArt.bellOff(theme, dark));
                 PendingIntent off = acts.get(A_OFF_THIS), start = acts.get(A_EYES_START);
                 android.widget.RemoteViews small = offView(c, title, body, bell, off, start, false, countMs), big = offView(c, title, body, bell, off, start, true, countMs);
+                small.setTextColor(R.id.nr_title, NotificationArt.titleColor(c, theme)); big.setTextColor(R.id.nr_title, NotificationArt.titleColor(c, theme));
                 b.setStyle(new NotificationCompat.DecoratedCustomViewStyle()).setCustomContentView(small).setCustomBigContentView(big).setCustomHeadsUpContentView(small);
                 b.setLargeIcon((android.graphics.Bitmap) null);   // no picture at the top right: the text uses the full width
                 own = true;
@@ -478,13 +480,14 @@ final class ReminderScheduler {
                 RemoteViews mv = new RemoteViews(c.getPackageName(), R.layout.notif_mind);
                 String thought = (body == null || body.isEmpty()) ? (title == null ? "" : title) : body;
                 mv.setTextViewText(R.id.nm_text, thought);
-                mv.setTextColor(R.id.nm_text, theme.title);
-                mv.setTextColor(R.id.nm_title, theme.title);
+                mv.setTextColor(R.id.nm_text, NotificationArt.titleColor(c, theme));
+                mv.setTextColor(R.id.nm_title, NotificationArt.titleColor(c, theme));
                 mv.setTextColor(R.id.nm_mark, theme.big);
                 b.setContentTitle("Mind").setContentText(thought).setStyle(new NotificationCompat.DecoratedCustomViewStyle())
                     .setCustomContentView(mv).setCustomBigContentView(mv).setCustomHeadsUpContentView(mv);
             } catch (Exception e) { /* keep the standard notification */ }
         }
+        if (!own && !pic && !("mind".equals(tapKey) || "preview:mind".equals(tapKey))) sectionTitle(c, b, theme, checks ? noTime(title) : title, body);
         if (!own && !pic && tag != null && tag.endsWith("test")) b.setLargeIcon((android.graphics.Bitmap) null);   // the test notification: no big logo, as in the newer notifications
         for (java.util.Map.Entry<String, PendingIntent> e : acts.entrySet()) {
             if (own && (A_OFF_THIS.equals(e.getKey()) || A_EYES_START.equals(e.getKey()))) continue;   // already in the app's own drawing
@@ -503,6 +506,24 @@ final class ReminderScheduler {
                 nm.notify(idFor(tag), b.build());
             } catch (Throwable ignored) { }
         }
+    }
+
+    /** Title in the section colour (light shade in dark mode), text in the system colour: the app draws the notification text. */
+    static void sectionTitle(Context c, NotificationCompat.Builder b, NotificationArt.Theme t, String title, String body) {
+        try {
+            int col = NotificationArt.titleColor(c, t);
+            RemoteViews small = stdView(c, col, title, body, 2), big = stdView(c, col, title, body, 8);
+            b.setStyle(new NotificationCompat.DecoratedCustomViewStyle()).setCustomContentView(small).setCustomBigContentView(big).setCustomHeadsUpContentView(small);
+        } catch (Exception e) { /* keep the standard notification */ }
+    }
+    private static RemoteViews stdView(Context c, int col, String title, String body, int lines) {
+        RemoteViews v = new RemoteViews(c.getPackageName(), R.layout.notif_std);
+        v.setTextViewText(R.id.ns_title, title == null ? "" : title);
+        v.setTextColor(R.id.ns_title, col);
+        boolean has = body != null && !body.isEmpty();
+        v.setViewVisibility(R.id.ns_text, has ? android.view.View.VISIBLE : android.view.View.GONE);
+        if (has) { v.setTextViewText(R.id.ns_text, body); v.setInt(R.id.ns_text, "setMaxLines", lines); }
+        return v;
     }
 
     // The section-coloured card: light section gradient with a faint lotus, the section logo, dark section-coloured text.
@@ -658,6 +679,7 @@ final class ReminderScheduler {
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .addAction(0, "Stop alarm", offPi);
+        sectionTitle(c, b, theme, noTime(title), "Snoozed · rings at " + when);
         try { nm.notify(idFor(tag), b.build()); } catch (SecurityException ignored) {}
     }
 

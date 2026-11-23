@@ -44,6 +44,12 @@ final class NotificationArt {
         return forSection(section);
     }
 
+    /** The title colour: the section's dark shade on a light notification, a light tint of it in dark mode. */
+    static int titleColor(android.content.Context c, Theme t) {
+        boolean dark = (c.getResources().getConfiguration().uiMode & android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES;
+        return dark ? mix(t.big, .2) : t.title;
+    }
+
     /** A theme from one section colour, mixed like the web app's sectionTheme(). */
     static Theme fromColor(int col) {
         if (col == REMINDERS.ic0 || col == REMINDERS.deep) return REMINDERS;
