@@ -430,8 +430,7 @@ final class ReminderScheduler {
             .setSmallIcon(smallIcon(c))
             .setContentTitle(title)
             .setContentText(body)
-            // Standard Android look (Android 12+ always frames a custom picture): the section logo on the right, the section colour for the app name and buttons
-            .setLargeIcon(art("logo" + theme.key(), () -> NotificationArt.logo(theme)))
+            // No big logo at the top right: the section shows in the small icon, the title and the buttons
             .setStyle(new NotificationCompat.BigTextStyle().bigText(body))
             .setColor(NotificationArt.accentColor(c, theme))
             .setContentIntent(pi)
@@ -480,7 +479,7 @@ final class ReminderScheduler {
                 RemoteViews mv = new RemoteViews(c.getPackageName(), R.layout.notif_mind);
                 String thought = (body == null || body.isEmpty()) ? (title == null ? "" : title) : body;
                 mv.setTextViewText(R.id.nm_text, thought);
-                mv.setTextColor(R.id.nm_text, NotificationArt.titleColor(c, theme));
+                
                 mv.setTextColor(R.id.nm_title, NotificationArt.titleColor(c, theme));
                 mv.setTextColor(R.id.nm_mark, theme.big);
                 b.setContentTitle("Mind").setContentText(thought).setStyle(new NotificationCompat.DecoratedCustomViewStyle())
