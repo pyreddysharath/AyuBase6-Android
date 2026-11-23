@@ -121,7 +121,7 @@ final class ReminderScheduler {
             .setContentTitle("Alarm at " + when)
             .setContentText("Alarm".equals(name) || name.isEmpty() ? "Upcoming alarm" : name)
             .setLargeIcon(art("alarm" + theme.key(), () -> NotificationArt.alarm(theme)))   // an alarm clock in the section's colour
-            .setColor(theme.deep).setContentIntent(pi)
+            .setColor(NotificationArt.accentColor(c, theme)).setContentIntent(pi)
             .setOngoing(true).setAutoCancel(false).setOnlyAlertOnce(true).setSilent(true)
             .setUsesChronometer(true).setChronometerCountDown(true).setWhen(ms).setShowWhen(true)
             .setCategory(NotificationCompat.CATEGORY_ALARM).setPriority(NotificationCompat.PRIORITY_LOW)
@@ -433,7 +433,7 @@ final class ReminderScheduler {
             // Standard Android look (Android 12+ always frames a custom picture): the section logo on the right, the section colour for the app name and buttons
             .setLargeIcon(art("logo" + theme.key(), () -> NotificationArt.logo(theme)))
             .setStyle(new NotificationCompat.BigTextStyle().bigText(body))
-            .setColor(theme.deep)
+            .setColor(NotificationArt.accentColor(c, theme))
             .setContentIntent(pi)
             .setAutoCancel(true)
             .setOnlyAlertOnce(silent)
@@ -671,7 +671,7 @@ final class ReminderScheduler {
             .setContentTitle(noTime(title))
             .setContentText("Snoozed · rings at " + when)
             .setLargeIcon(art("alarm" + theme.key(), () -> NotificationArt.alarm(theme)))   // an alarm clock in the section's colour
-            .setColor(theme.deep)
+            .setColor(NotificationArt.accentColor(c, theme))
             .setContentIntent(pi)
             .setOngoing(true).setAutoCancel(false).setOnlyAlertOnce(true).setSilent(true)
             .setUsesChronometer(true).setChronometerCountDown(true).setWhen(atMs).setShowWhen(true)
