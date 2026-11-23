@@ -169,8 +169,8 @@ final class NotificationArt {
         bg.setShader(new LinearGradient(0, 0, w, h, t.g0, t.g1, Shader.TileMode.CLAMP));
         cv.drawRect(0, 0, w, h, bg);   // square edges: the colour fills the whole notification area, edge to edge
         float k = h / 360f;
-        if (t == LOGO) { lotus(cv, w - 250 * k, h * .93f, 14.5f * k, LOGO_PETALS, .55f); lotus(cv, w * .42f, h, 6.5f * k, 0xFF3982c3, .14f); return b; }
-        lotus(cv, w - 250 * k, h * .93f, 14.5f * k, t.big, .55f);
+        if (t == LOGO) { lotus(cv, w - 240 * k, h * .95f, 13.2f * k, LOGO_PETALS, .55f); lotus(cv, w * .42f, h, 6.5f * k, 0xFF3982c3, .14f); return b; }
+        lotus(cv, w - 240 * k, h * .95f, 13.2f * k, t.big, .55f);
         lotus(cv, w * .42f, h, 6.5f * k, t.deep, .14f);
         return b;
     }

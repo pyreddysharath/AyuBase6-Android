@@ -4,7 +4,7 @@ Each line: the choice, then why. Change any of them later; the file to touch is 
 
 ## App
 - **Name "AyuBase6", package id `com.ayubase6.app`** — matches the site's domain; the id can never change after the first Play release. [capacitor.config.json, android/app/build.gradle]
-- **Icon: the lotus (icons/icon-512.png) on white; status-bar icon: the lotus outline** — same mark as the web app; Android needs a one-colour icon for the status bar. [android/app/src/main/res/mipmap-*, drawable/ic_stat_lotus.xml]
+- **Icon: the lotus-and-drop mark (icons/icon-512.png) on white; status-bar icon: the mark as a white silhouette** — same mark as the web app; Android needs a one-colour icon for the status bar. [android/app/src/main/res/mipmap-*, drawable/ic_stat_lotus.xml]
 - **Minimum Android 8.0 (API 26)** — covers almost all phones in use and gives notification channels and modern alarms without workarounds. [android/variables.gradle]
 - **Capacitor 8.6** — current stable; wraps the existing single-file app with no rewrite. [package.json]
 
