@@ -497,10 +497,6 @@
     if(upd.phase === 'installing'){ upd.phase = ''; updEvent(); }   // back from Android's screen without updating
   });
 
-  // Update automatically (off until the person turns it on): a new version downloads by itself, then Android asks to confirm
-  var AUTO_KEY = 'ayuAutoUpdate', AUTO_TRIED = 'ayuAutoUpdateTried';
-  state.autoUpdateGet = function(){ return ls(AUTO_KEY) === '1'; };
-  state.autoUpdateSet = function(on){ ls(AUTO_KEY, on ? '1' : '0'); if(on) setTimeout(checkUpdate, 50); updEvent(); };
   // The bottom pop-up styles (Update available, notes, and the full-screen alarm notice)
   function dlgCss(){
       if(!document.getElementById('ayu-upd-dlg-css')){
@@ -517,7 +513,6 @@
           + '.ayu-upd-dlg .ud-ic svg{width:14px;height:14px}'
           + '.ayu-upd-dlg .ud-t{display:block;font-weight:800;font-size:.94rem;color:var(--footer-accent,#6f9a1c)}'
           + '.ayu-upd-dlg .ud-p{margin:0;font-size:.78rem;line-height:1.35;color:#475569}'
-          + '.ayu-upd-dlg.ayu-upd-banner .appb-auto{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:6px 0 0;padding:4px 9px;border-radius:10px;background:#f1f5f9;color:#334155;font-size:.74rem;font-weight:800}'
           + '.ayu-upd-dlg .ud-btns{display:flex;gap:8px;margin-top:6px}'
           + '.ayu-upd-dlg .ud-btns button{border-radius:10px;padding:6px 12px;font:inherit;font-size:.86rem;font-weight:800;cursor:pointer}'
           + '.ayu-upd-dlg .ud-later{flex:1;background:#fff;border:1.5px solid color-mix(in srgb,var(--footer-accent,#6f9a1c) 30%,#fff);color:var(--footer-accent,#6f9a1c)}'
@@ -532,10 +527,6 @@
       if(state.store === 'play') return;
       if(upd.error && n < 6){ setTimeout(function(){ checkUpdate(n + 1); }, [1500, 4000, 10000, 30000, 60000, 120000][n]); return; }   // right after the app starts the phone's network may not be ready: try again
       var cfg = upd.latest; if(!cfg) return;
-      if(state.autoUpdateGet() && state.selfInstall !== false && typeof P.updateDownload === 'function' && ls(AUTO_TRIED) !== String(cfg.versionCode)){
-        ls(AUTO_TRIED, String(cfg.versionCode)); document.querySelectorAll('.ayu-upd-banner').forEach(function(b){ b.remove(); });
-        state.updateStart(); return;   // one try for each version; if it fails, the banner and App Updates show Update as usual
-      }
       if(laterHidden(cfg.versionCode)) return;
       if(document.querySelector('.ayu-upd-banner')) return;
       // A pop-up in the middle of the screen, so it is seen wherever the person is on the page: what is new, Update, Later
@@ -545,17 +536,10 @@
       var b = document.createElement('div'); b.className = 'ayu-upd-banner ayu-upd-dlg'; b.id = 'ayu-update-card'; b.setAttribute('role', 'alertdialog'); b.setAttribute('aria-modal', 'true'); b.setAttribute('aria-label', 'Update available');
       b.innerHTML = '<div class="ud-card"><div class="ud-grab"></div><div class="ud-head"><div class="ud-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 11l5 5 5-5M5 20h14"/></svg></div><div><b class="ud-t">Update available</b>'
         + (state.selfInstall === false ? '<p class="ud-p">Download and install.</p>' : '') + '</div></div>'
-        + (state.selfInstall !== false && !state.autoUpdateGet() ? '<label class="appb-auto"><span>Update automatically next time</span><span class="master-switch"><input type="checkbox" class="appb-auto-sw" aria-label="Update automatically next time"></span></label>' : '')
         + '<div class="ud-btns"><button type="button" class="ud-later ayu-ec-later">Later</button><button type="button" class="ud-go ayu-ec-allow">Download</button></div></div>';
       b.querySelector('.ayu-ec-allow').addEventListener('click', function(){
         gone(); state.updateStart();   // downloads right here; the person stays where they are
         if(state.selfInstall !== false && state.store !== 'play') noteSheet('Downloading the update. Android will ask to install when it is ready.', 6000);
-      });
-      var asw = b.querySelector('.appb-auto-sw');
-      if(asw) asw.addEventListener('change', function(){
-        if(asw.checked) ls(AUTO_TRIED, String(cfg.versionCode));   // this update still waits for the tap; the next ones come by themselves
-        state.autoUpdateSet(asw.checked);
-        document.querySelectorAll('.appb-auto-sw').forEach(function(o){ o.checked = asw.checked; });
       });
       b.querySelector('.ayu-ec-later').addEventListener('click', function(){
         ls(UPD_KEY, JSON.stringify({ closed:true, v:String(cfg.versionCode), at:Date.now() })); gone();
