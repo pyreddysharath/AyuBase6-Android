@@ -95,3 +95,4 @@ Owner: Sharath (Hyderabad, India). App: **AyuBase6**, a health PWA (Body, Food, 
 - Files the page makes (Backup, PDFs) are saved through the phone (`saveFile`, Downloads).
 - Google Play (not uploaded yet): `play/listing.md`, `play/play-console-answers.md`, `play/screenshots/`, `play/icon-512.png`, `play/feature-graphic.png`; the publish run also builds `AyuBase6-<N>.aab` (run artifact). Privacy policy: `https://ayubase6.com/privacy.html` (website repo).
 - Not built yet: Play Console upload and closed test (Sharath's account).
+- **Settings → Reset** (`reset-all-20261123`): "Reset all settings" clears every localStorage key except the records (`ayu_vitals_tracker_v1`, `ayu_lab_reports_v1`, `ayuBase6-med-log`, `ayuBase6-tour-seen`; edit `KEEP`), stops the phone's clock and re-syncs rules; "Erase all data" (type ERASE) also clears IndexedDB and caches. Both reload the page.
