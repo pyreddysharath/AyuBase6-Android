@@ -548,10 +548,8 @@
         + (state.selfInstall !== false && !state.autoUpdateGet() ? '<label class="appb-auto"><span>Update automatically next time</span><span class="master-switch"><input type="checkbox" class="appb-auto-sw" aria-label="Update automatically next time"></span></label>' : '')
         + '<div class="ud-btns"><button type="button" class="ud-later ayu-ec-later">Later</button><button type="button" class="ud-go ayu-ec-allow">Download</button></div></div>';
       b.querySelector('.ayu-ec-allow').addEventListener('click', function(){
-        gone(); state.updateStart();
-        setTimeout(function(){   // after this tap (the footer closes on taps outside it)
-          try{ if(typeof window.showFooterSection === 'function'){ window.showFooterSection('backup'); if(typeof window.showFooterSub === 'function') window.showFooterSub('backup', 'app'); var sa = document.getElementById('sec-app'); if(sa) sa.scrollIntoView({ block:'center', behavior:'smooth' }); } }catch(e){}
-        }, 60);
+        gone(); state.updateStart();   // downloads right here; the person stays where they are
+        if(state.selfInstall !== false && state.store !== 'play') noteSheet('Downloading the update. Android will ask to install when it is ready.', 6000);
       });
       var asw = b.querySelector('.appb-auto-sw');
       if(asw) asw.addEventListener('change', function(){
