@@ -276,6 +276,7 @@ public class AyuRemindersPlugin extends Plugin {
         try { theme = (color != null && color.matches("^#[0-9a-fA-F]{6}$")) ? NotificationArt.fromColor(android.graphics.Color.parseColor(color)) : NotificationArt.forSection(call.getString("section", "")); }
         catch (Exception e) { theme = NotificationArt.REMINDERS; }
         String like = call.getString("previewLike", "");
+        if ("mind".equals(like) || "mind".equals(call.getString("tapKey", ""))) theme = NotificationArt.MIND;   // the daily thought, also as a preview
         if (like != null && !like.isEmpty()) {   // Preview notification: the real buttons of that reminder; tapping one only closes the preview
             ReminderScheduler.show(getContext(), key, call.getString("title", "AyuBase6"), call.getString("body", ""),
                 false, theme, call.getString("section", ""), "preview:" + like, ReminderScheduler.actionsFor(like));

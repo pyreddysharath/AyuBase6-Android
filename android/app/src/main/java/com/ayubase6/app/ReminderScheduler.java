@@ -473,13 +473,14 @@ final class ReminderScheduler {
                 own = true;
             } catch (Exception e) { own = false; }
         }
-        if (!own && !pic && "mind".equals(tapKey)) {   // Mind: the thought as a quote, with no "Mind" title
+        if (!own && !pic && ("mind".equals(tapKey) || "preview:mind".equals(tapKey))) {   // Mind: the thought as a quote, with no "Mind" title
             try {
                 RemoteViews mv = new RemoteViews(c.getPackageName(), R.layout.notif_mind);
-                mv.setTextViewText(R.id.nm_text, body == null ? "" : body);
+                String thought = (body == null || body.isEmpty()) ? (title == null ? "" : title) : body;
+                mv.setTextViewText(R.id.nm_text, thought);
                 mv.setTextColor(R.id.nm_text, theme.title);
                 mv.setTextColor(R.id.nm_mark, theme.big);
-                b.setContentTitle(body).setContentText(null).setStyle(new NotificationCompat.DecoratedCustomViewStyle())
+                b.setContentTitle(thought).setContentText(null).setStyle(new NotificationCompat.DecoratedCustomViewStyle())
                     .setCustomContentView(mv).setCustomBigContentView(mv).setCustomHeadsUpContentView(mv);
             } catch (Exception e) { /* keep the standard notification */ }
         }
