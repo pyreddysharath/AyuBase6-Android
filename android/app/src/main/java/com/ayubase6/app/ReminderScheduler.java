@@ -533,12 +533,7 @@ final class ReminderScheduler {
             int tint = NotificationArt.panelTint(c, t);
             int ph = Math.round(10 * d), pv = Math.round((big ? 8 : 3) * d);
             v.setViewPadding(R.id.nl_panel, ph, pv, ph, pv);
-            if (Build.VERSION.SDK_INT >= 31) {
-                v.setInt(R.id.nl_panel, "setBackgroundResource", R.drawable.look_panel_bg);
-                v.setColorStateList(R.id.nl_panel, "setBackgroundTintList", android.content.res.ColorStateList.valueOf(tint));
-            } else {
-                v.setInt(R.id.nl_panel, "setBackgroundColor", tint);
-            }
+            v.setInt(R.id.nl_panel, "setBackgroundColor", tint);   // a plain colour: the same on every Android version
         }
         return v;
     }
