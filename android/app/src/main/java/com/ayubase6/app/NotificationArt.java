@@ -52,6 +52,12 @@ final class NotificationArt {
     /** The title colour: the section's dark shade on a light notification, a medium tone of it in dark mode. */
     static int titleColor(android.content.Context c, Theme t) { return night(c) ? darkTone(t) : t.title; }
     /** The notification colour (the app name and small icon): the section colour, a medium tone of it in dark mode so the system does not wash it out. */
+    /** The soft panel behind the text: the section's light tint, a deep mix of it with the dark card in dark mode. */
+    static int panelTint(android.content.Context c, Theme t) {
+        if (!night(c)) return t.g1;
+        int base = 0xFF2B2F33, sec = t.deep;
+        return Color.rgb(Math.round(Color.red(sec) * .3f + Color.red(base) * .7f), Math.round(Color.green(sec) * .3f + Color.green(base) * .7f), Math.round(Color.blue(sec) * .3f + Color.blue(base) * .7f));
+    }
     static int accentColor(android.content.Context c, Theme t) { return night(c) ? darkTone(t) : t.deep; }
 
     /** A theme from one section colour, mixed like the web app's sectionTheme(). */
