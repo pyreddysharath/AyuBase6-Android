@@ -479,8 +479,9 @@ final class ReminderScheduler {
                 String thought = (body == null || body.isEmpty()) ? (title == null ? "" : title) : body;
                 mv.setTextViewText(R.id.nm_text, thought);
                 mv.setTextColor(R.id.nm_text, theme.title);
+                mv.setTextColor(R.id.nm_title, theme.title);
                 mv.setTextColor(R.id.nm_mark, theme.big);
-                b.setContentTitle(thought).setContentText(null).setStyle(new NotificationCompat.DecoratedCustomViewStyle())
+                b.setContentTitle("Mind").setContentText(thought).setStyle(new NotificationCompat.DecoratedCustomViewStyle())
                     .setCustomContentView(mv).setCustomBigContentView(mv).setCustomHeadsUpContentView(mv);
             } catch (Exception e) { /* keep the standard notification */ }
         }
