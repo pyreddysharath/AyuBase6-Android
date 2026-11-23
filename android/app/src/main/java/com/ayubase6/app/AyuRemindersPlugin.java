@@ -277,9 +277,11 @@ public class AyuRemindersPlugin extends Plugin {
         catch (Exception e) { theme = NotificationArt.REMINDERS; }
         String like = call.getString("previewLike", "");
         if ("mind".equals(like) || "mind".equals(call.getString("tapKey", ""))) theme = NotificationArt.MIND;   // the daily thought, also as a preview
+        else if ((color == null || color.isEmpty()) && !"test".equals(call.getString("tapKey", ""))) { String fk = (like != null && !like.isEmpty()) ? like : call.getString("tapKey", "").replaceFirst("^preview-", ""); theme = NotificationArt.forKey(call.getString("section", ""), fk); }   // the section's own colour, also for previews
         if (like != null && !like.isEmpty()) {   // Preview notification: the real buttons of that reminder; tapping one only closes the preview
             ReminderScheduler.show(getContext(), key, call.getString("title", "AyuBase6"), call.getString("body", ""),
-                false, theme, call.getString("section", ""), "preview:" + like, ReminderScheduler.actionsFor(like));
+                false, theme, call.getString("section", ""), "preview:" + like, ReminderScheduler.actionsFor(like),
+                !Boolean.FALSE.equals(call.getBoolean("vibrate", true)));   // vibrates only when that reminder's Vibrate switch is on
         } else {
             ReminderScheduler.show(getContext(), key, call.getString("title", "AyuBase6"), call.getString("body", ""),
                 Boolean.TRUE.equals(call.getBoolean("silent", false)), theme, call.getString("section", ""), call.getString("tapKey", ""));

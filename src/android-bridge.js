@@ -176,7 +176,8 @@
     var section = (opts.data && opts.data.section) || '', tapKey = (opts.data && opts.data.key) || '';
     var own = (section === 'alerts' || section === 'routines') && tapKey !== 'test';
     P.show({ key:key, title:this.title, body:this.body, silent:!!opts.silent, color:own ? '' : accent(),
-             section:section, tapKey:tapKey, previewLike:String((opts.data && opts.data.previewLike) || '') }).catch(noop);
+             section:section, tapKey:tapKey, previewLike:String((opts.data && opts.data.previewLike) || ''),
+             vibrate:(opts.data && opts.data.previewLike && window.ayuVibrate) ? !!window.ayuVibrate.on(opts.data.previewLike === 'mind' ? 'mind' : tapKey) : true }).catch(noop);
   }
   AyuNotification.prototype.close = function(){ if(this.tag) P.cancel({ key:this.tag }).catch(noop); };
   AyuNotification.prototype.addEventListener = noop;
