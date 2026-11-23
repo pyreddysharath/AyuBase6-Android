@@ -417,9 +417,6 @@
     if(o.never) return false;   // older ×: hid every version; now counts as "not yet closed"
     return String(o.v) === String(code) && Date.now() - (+o.at || 0) < LATER_MS;
   }
-  // Notification look (Settings → Notifications): "panel" (default), "bar" or "title"; the phone draws it
-  state.lookGet = function(){ return typeof P.lookGet === 'function' ? P.lookGet().then(function(r){ return String((r && r.look) || 'panel'); }) : Promise.resolve('panel'); };
-  state.lookSet = function(v){ return typeof P.lookSet === 'function' ? P.lookSet({ look:String(v) }).then(function(r){ return String((r && r.look) || 'panel'); }) : Promise.resolve('panel'); };
   state.updateChecksGet = function(){ return typeof P.updateChecksGet === 'function' ? P.updateChecksGet().then(function(r){ return +(r && r.times); }) : Promise.reject(); };
   state.updateChecksSet = function(n){ return P.updateChecksSet({ times:+n }); };
   // Which version this is: "website" (updates itself from ayubase6.com) or "play" (Google Play updates it)

@@ -482,7 +482,7 @@ final class ReminderScheduler {
             if ("mind".equals(tapKey) || "preview:mind".equals(tapKey)) {   // Mind: the thought as a quote, in the chosen notification look
                 String thought = (body == null || body.isEmpty()) ? (title == null ? "" : title) : body;
                 b.setContentTitle("Mind").setContentText(thought);
-                sectionTitle(c, b, theme, "Mind", "\u201C" + thought + "\u201D", 2);
+                sectionTitle(c, b, theme, "Mind", "\u201C" + thought + "\u201D");
             } else sectionTitle(c, b, theme, checks ? noTime(title) : title, body);
         }
         if (!own && !pic && tag != null && tag.endsWith("test")) b.setLargeIcon((android.graphics.Bitmap) null);   // the test notification: no big logo, as in the newer notifications
@@ -506,36 +506,12 @@ final class ReminderScheduler {
     }
 
     /** Title in the section colour (light shade in dark mode), text in the system colour: the app draws the notification text. */
-    static void sectionTitle(Context c, NotificationCompat.Builder b, NotificationArt.Theme t, String title, String body) { sectionTitle(c, b, t, title, body, 1); }
-    static void sectionTitle(Context c, NotificationCompat.Builder b, NotificationArt.Theme t, String title, String body, int smallLines) {
+    static void sectionTitle(Context c, NotificationCompat.Builder b, NotificationArt.Theme t, String title, String body) {
         try {
             int col = NotificationArt.titleColor(c, t);
-            String look = NotifLook.get(c);
-            RemoteViews small, big;
-            if ("title".equals(look)) { small = stdView(c, col, title, body, Math.max(2, smallLines)); big = stdView(c, col, title, body, 8); }
-            else { small = lookView(c, t, look, col, title, body, smallLines, false); big = lookView(c, t, look, col, title, body, 8, true); }
+            RemoteViews small = stdView(c, col, title, body, 2), big = stdView(c, col, title, body, 8);
             b.setStyle(new NotificationCompat.DecoratedCustomViewStyle()).setCustomContentView(small).setCustomBigContentView(big).setCustomHeadsUpContentView(small);
         } catch (Exception e) { /* keep the standard notification */ }
-    }
-    /** The text with a section-colour bar beside it ("bar") or a soft section-colour panel behind it ("panel"). The header line is Android's. */
-    private static RemoteViews lookView(Context c, NotificationArt.Theme t, String look, int col, String title, String body, int lines, boolean big) {
-        RemoteViews v = new RemoteViews(c.getPackageName(), R.layout.notif_look);
-        v.setTextViewText(R.id.nl_title, title == null ? "" : title);
-        v.setTextColor(R.id.nl_title, col);
-        boolean has = body != null && !body.isEmpty();
-        v.setViewVisibility(R.id.nl_text, has ? android.view.View.VISIBLE : android.view.View.GONE);
-        if (has) { v.setTextViewText(R.id.nl_text, body); v.setInt(R.id.nl_text, "setMaxLines", lines); }
-        float d = c.getResources().getDisplayMetrics().density;
-        if ("bar".equals(look)) {
-            v.setViewVisibility(R.id.nl_bar, android.view.View.VISIBLE);
-            v.setInt(R.id.nl_bar, "setBackgroundColor", NotificationArt.accentColor(c, t));
-        } else {
-            int tint = NotificationArt.panelTint(c, t);
-            int ph = Math.round(10 * d), pv = Math.round((big ? 8 : 3) * d);
-            v.setViewPadding(R.id.nl_panel, ph, pv, ph, pv);
-            v.setInt(R.id.nl_panel, "setBackgroundColor", tint);   // a plain colour: the same on every Android version
-        }
-        return v;
     }
     private static RemoteViews stdView(Context c, int col, String title, String body, int lines) {
         RemoteViews v = new RemoteViews(c.getPackageName(), R.layout.notif_std);

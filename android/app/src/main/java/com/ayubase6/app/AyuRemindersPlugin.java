@@ -246,15 +246,6 @@ public class AyuRemindersPlugin extends Plugin {
         call.resolve(r);
     }
 
-    /** Notification look: "panel" (default), "bar" or "title". */
-    @PluginMethod
-    public void lookGet(PluginCall call) { JSObject r = new JSObject(); r.put("look", NotifLook.get(getContext())); call.resolve(r); }
-    @PluginMethod
-    public void lookSet(PluginCall call) {
-        NotifLook.set(getContext(), call.getString("look", "panel"));
-        JSObject r = new JSObject(); r.put("look", NotifLook.get(getContext())); call.resolve(r);
-    }
-
     /** Background update checks: times a day (0 = off, 1–4), only between 9 AM and 9 PM. */
     @PluginMethod
     public void updateChecksGet(PluginCall call) { JSObject r = new JSObject(); r.put("times", UpdateCheck.times(getContext())); call.resolve(r); }
