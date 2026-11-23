@@ -367,13 +367,13 @@ public class AlarmService extends Service {
         PendingIntent full = PendingIntent.getActivity(this, 7302, open, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         NotificationCompat.Builder b = new NotificationCompat.Builder(this, CHANNEL_ALARMS)
             .setSmallIcon(R.drawable.ic_stat_lotus)
-            .setContentTitle("⏰ " + ReminderScheduler.noTime(title))
+            .setContentTitle(ReminderScheduler.noTime(title))
             .setShowWhen(false)
             .setContentText(body)
             .setStyle(new NotificationCompat.BigTextStyle().bigText(body))
             .setColor(theme().deep)
             .setColorized(true)   // a ringing alarm (foreground service) may fill the whole card with its section colour
-            .setLargeIcon(NotificationArt.logo(theme()))
+            .setLargeIcon(NotificationArt.alarm(theme()))   // an alarm clock in the section's colour
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)

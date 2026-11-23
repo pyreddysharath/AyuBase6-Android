@@ -473,6 +473,16 @@ final class ReminderScheduler {
                 own = true;
             } catch (Exception e) { own = false; }
         }
+        if (!own && !pic && "mind".equals(tapKey)) {   // Mind: the thought as a quote, with no "Mind" title
+            try {
+                RemoteViews mv = new RemoteViews(c.getPackageName(), R.layout.notif_mind);
+                mv.setTextViewText(R.id.nm_text, body == null ? "" : body);
+                mv.setTextColor(R.id.nm_text, theme.title);
+                mv.setTextColor(R.id.nm_mark, theme.big);
+                b.setContentTitle(body).setContentText(null).setStyle(new NotificationCompat.DecoratedCustomViewStyle())
+                    .setCustomContentView(mv).setCustomBigContentView(mv).setCustomHeadsUpContentView(mv);
+            } catch (Exception e) { /* keep the standard notification */ }
+        }
         if (!own && !pic && tag != null && tag.endsWith("test")) b.setLargeIcon((android.graphics.Bitmap) null);   // the test notification: no big logo, as in the newer notifications
         for (java.util.Map.Entry<String, PendingIntent> e : acts.entrySet()) {
             if (own && (A_OFF_THIS.equals(e.getKey()) || A_EYES_START.equals(e.getKey()))) continue;   // already in the app's own drawing
@@ -635,9 +645,9 @@ final class ReminderScheduler {
         String when = java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).format(new java.util.Date(atMs));
         NotificationCompat.Builder b = new NotificationCompat.Builder(c, CHANNEL_UPDATES)
             .setSmallIcon(smallIcon(c))
-            .setContentTitle("⏰ " + noTime(title))
+            .setContentTitle(noTime(title))
             .setContentText("Snoozed · rings at " + when)
-            .setLargeIcon(art("logo" + theme.key(), () -> NotificationArt.logo(theme)))
+            .setLargeIcon(art("alarm" + theme.key(), () -> NotificationArt.alarm(theme)))   // an alarm clock in the section's colour
             .setColor(theme.deep)
             .setContentIntent(pi)
             .setOngoing(true).setAutoCancel(false).setOnlyAlertOnce(true).setSilent(true)
