@@ -174,6 +174,8 @@ final class ReminderRules {
             JSONObject c = custom.optJSONObject(i);
             if (c == null || c.optString("name").isEmpty()) continue;
             if (!dayAllowed(c, local.dow)) continue;
+            String until = c.optString("until", "");   // Medicine: the last day (yyyy-MM-dd); nothing after it
+            if (until.length() == 10 && local.day.compareTo(until) > 0) continue;
             boolean isDue = false;
             if ("regular".equals(c.optString("mode"))) {
                 Double every = num(c, "every"), anchor = num(c, "anchor");
@@ -185,8 +187,9 @@ final class ReminderRules {
             } else {
                 isDue = hasInt(c.optJSONArray("times"), m);
             }
-            if (isDue) out.add(new Due("custom" + str(c.opt("id"), 12).replaceAll("[^A-Za-z0-9]", ""),
-                str(c.opt("name"), 80), str(c.opt("notes"), 1000).isEmpty() ? "It is time for your reminder." : str(c.opt("notes"), 1000), "alerts").vib(c));
+            boolean med = c.optBoolean("med", false);   // Medicine: its own key ("med…") so the notification gets Taken / Snooze / Skip
+            if (isDue) out.add(new Due((med ? "med" : "custom") + str(c.opt("id"), 12).replaceAll("[^A-Za-z0-9]", ""),
+                str(c.opt("name"), 80), str(c.opt("notes"), 1000).isEmpty() ? (med ? "Time for your medicine. Did you take it?" : "It is time for your reminder.") : str(c.opt("notes"), 1000), "alerts").vib(c));
         }
         return out;
     }

@@ -284,7 +284,7 @@ final class ReminderScheduler {
                     && AlarmService.startSnoozed(c, o.optString("key"), o.optString("title"), o.optString("body"), o.optInt("count", 1), o.optString("cfg", ""))) continue;
             if (now - t <= MAX_LATE_MIN) {
                 String k = o.optString("key");
-                String sec = k.startsWith("alarm-rem") ? "alerts" : "routines";   // Reminders alarms: "rem", "rem-<id>"
+                String sec = (k.startsWith("alarm-rem") || k.startsWith("med")) ? "alerts" : "routines";   // Reminders alarms: "rem", "rem-<id>"
                 show(c, "nudge-" + k, o.optString("title"), o.optString("body"), false, NotificationArt.forKey(sec, k), sec, k, actionsFor(k));
             }
         }
@@ -334,9 +334,10 @@ final class ReminderScheduler {
     }
 
     // ── Buttons on reminders, the same as the website's: Checks "✓ Done" / "Not yet", the others "Turn off this" / "Turn off all" ──
-    static final String A_DONE = "done", A_NOT_YET = "not-yet", A_OFF_THIS = "disable-this", A_OFF_ALL = "disable-all";
+    static final String A_DONE = "done", A_NOT_YET = "not-yet", A_OFF_THIS = "disable-this", A_OFF_ALL = "disable-all", A_TAKEN = "taken", A_SKIP = "skipped", A_SNOOZE10 = "snooze10";
     static String[] actionsFor(String key) {
         if (key.startsWith("routine-")) return new String[]{A_DONE, A_NOT_YET};
+        if (key.matches("^med[A-Za-z0-9]+$")) return new String[]{A_TAKEN, A_SNOOZE10, A_SKIP};   // Medicine
         if ("break".equals(key)) return new String[]{A_EYES_START, A_OFF_THIS};   // Eyes (20-20-20): Start begins the 20-second countdown
         if (key.matches("^(break|walk|drink|eyeex|posture|stretch|breathe|stand)$")) return new String[]{A_OFF_THIS};   // "Turn off all" was dropped: one wrong tap silenced everything
         return new String[0];   // My Reminders: no buttons, as on the website
@@ -345,6 +346,9 @@ final class ReminderScheduler {
         switch (a) {
             case A_DONE: return "✓ Done";
             case A_NOT_YET: return "Not yet";
+            case A_TAKEN: return "✓ Taken";
+            case A_SKIP: return "Skip";
+            case A_SNOOZE10: return "Snooze 10 min";
             case A_EYES_START: return "▶ Start";
             case A_OFF_THIS: return "Turn off this";
             default: return "Turn off all";
@@ -584,6 +588,13 @@ final class ReminderScheduler {
                 String b = body == null ? "" : body;
                 keep.put(new JSONObject().put("t", now + 15).put("key", "routine-" + item)
                     .put("title", title == null ? "" : title).put("body", b.startsWith("Still to do: ") ? b : "Still to do: " + b));
+                saveSnoozes(c, keep);
+            } else if ((A_TAKEN.equals(action) || A_SKIP.equals(action)) && key.startsWith("med")) {
+                addPending(c, key, action);   // the app writes it into the Medicine history
+            } else if (A_SNOOZE10.equals(action) && key.startsWith("med")) {
+                org.json.JSONArray sn = snoozes(c), keep = new org.json.JSONArray();
+                for (int i = 0; i < sn.length(); i++) { JSONObject o = sn.optJSONObject(i); if (o != null && !key.equals(o.optString("key"))) keep.put(o); }
+                keep.put(new JSONObject().put("t", now + 10).put("key", key).put("title", title == null ? "" : title).put("body", body == null ? "" : body));
                 saveSnoozes(c, keep);
             } else if ((A_OFF_THIS.equals(action) || A_OFF_ALL.equals(action)) && rules != null) {
                 mutate(rules, key, action, today);

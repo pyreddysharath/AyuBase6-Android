@@ -164,7 +164,7 @@
     return '';
   }
   // Reminders the phone already schedules: the app's own timer for these stays quiet, so nothing arrives twice.
-  var SCHEDULED_TAG = /^(nudge-custom-|ayubase6-custom-)/;
+  var SCHEDULED_TAG = /^(nudge-custom-|ayubase6-custom-|nudge-med)/;
   function AyuNotification(title, opts){
     opts = opts || {};
     this.title = String(title || ''); this.body = String(opts.body || ''); this.tag = String(opts.tag || ''); this.data = opts.data || null; this.onclick = null;
@@ -685,6 +685,7 @@
       list.forEach(function(a){
         if(!a || !a.key || !a.action) return;
         if(a.action === 'done' && a.day && a.day !== todayStr()) return;   // a tick from an earlier day must not tick today
+        if(/^med/.test(String(a.key)) && typeof window.ayuMedAct === 'function'){ try{ window.ayuMedAct(a.key, a.action, a.day, a.at); }catch(e){} return; }   // Medicine: Taken / Skip go into its history
         try{ if(typeof handleNudgeClick === 'function') handleNudgeClick(a.key, a.action); }catch(e){}
       });
       return list.length;
