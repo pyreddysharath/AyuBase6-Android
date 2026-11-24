@@ -454,7 +454,10 @@ final class ReminderScheduler {
         boolean checks = tapKey != null && (tapKey.startsWith("routine-") || tapKey.startsWith("alarm-"));
         if (checks) { b.setShowWhen(false); b.setContentTitle(noTime(title)); }   // the time is not repeated on the notification
         java.util.LinkedHashMap<String, PendingIntent> acts = new java.util.LinkedHashMap<>();
+        boolean noDayPlanButtons = false;   // Care → "Just remind me": the Day Plan notification has no Done / Not yet
+        try { JSONObject rr = loadRules(c); noDayPlanButtons = rr != null && !rr.optBoolean("routineButtons", true); } catch (Throwable ignored) { }
         for (String a : actions) {
+            if (noDayPlanButtons && (A_DONE.equals(a) || A_NOT_YET.equals(a))) continue;
             Intent ai = new Intent(c, ActionReceiver.class).setAction("com.ayubase6.app.ACTION." + a)
                 .putExtra(EXTRA_KEY, tapKey).putExtra(ActionReceiver.EXTRA_ACTION, a).putExtra(ActionReceiver.EXTRA_TAG, tag)
                 .putExtra(ActionReceiver.EXTRA_TITLE, title).putExtra(ActionReceiver.EXTRA_BODY, body);
