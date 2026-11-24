@@ -420,7 +420,7 @@ final class ReminderScheduler {
         if (done != null) v.setOnClickPendingIntent(R.id.nr_done, done);
         if (notYet != null) v.setOnClickPendingIntent(R.id.nr_notyet, notYet);
         // Start, the countdown and Done in the section colour
-        for (int id : new int[]{R.id.nr_start, R.id.nr_start_side, R.id.nr_count, R.id.nr_count_side, R.id.nr_done}) v.setTextColor(id, tint);
+        for (int id : new int[]{R.id.nr_start, R.id.nr_start_side, R.id.nr_count, R.id.nr_count_side, R.id.nr_done, R.id.nr_notyet}) v.setTextColor(id, tint);
         if (start != null) { v.setOnClickPendingIntent(R.id.nr_start, start); v.setOnClickPendingIntent(R.id.nr_start_side, start); }
         return v;
     }
