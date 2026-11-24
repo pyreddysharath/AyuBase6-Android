@@ -764,7 +764,7 @@ final class ReminderScheduler {
             Intent i = new Intent(c, ActionReceiver.class).setAction(A_EYES_DONE)
                 .putExtra(ActionReceiver.EXTRA_TAG, tag).putExtra(ActionReceiver.EXTRA_TITLE, title).putExtra(EXTRA_SECTION, section == null ? "" : section);
             PendingIntent pi = PendingIntent.getBroadcast(c, 7050, i, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-            long at = System.currentTimeMillis() + 20500L;
+            long at = System.currentTimeMillis() + 19800L;   // just before the countdown reaches 0, so it never shows -1
             if (canExact(c)) am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi); else am.set(AlarmManager.RTC_WAKEUP, at, pi);
         } catch (Exception ignored) {}
     }
