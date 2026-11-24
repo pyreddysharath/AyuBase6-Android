@@ -342,6 +342,12 @@ final class ReminderScheduler {
         if (key.matches("^(break|walk|drink|eyeex|posture|stretch|breathe|stand)$")) return new String[]{A_OFF_THIS};   // "Turn off all" was dropped: one wrong tap silenced everything
         return new String[0];   // My Reminders: no buttons, as on the website
     }
+    /** A button label in the section colour (Day Plan "✓ Done"). */
+    static CharSequence tinted(Context c, NotificationArt.Theme t, String label) {
+        android.text.SpannableString s = new android.text.SpannableString(label);
+        s.setSpan(new android.text.style.ForegroundColorSpan(NotificationArt.accentColor(c, t)), 0, s.length(), android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        return s;
+    }
     private static String actionLabel(String a) {
         switch (a) {
             case A_DONE: return "✓ Done";
@@ -488,7 +494,7 @@ final class ReminderScheduler {
         if (!own && !pic && tag != null && tag.endsWith("test")) b.setLargeIcon((android.graphics.Bitmap) null);   // the test notification: no big logo, as in the newer notifications
         for (java.util.Map.Entry<String, PendingIntent> e : acts.entrySet()) {
             if (own && (A_OFF_THIS.equals(e.getKey()) || A_EYES_START.equals(e.getKey()))) continue;   // already in the app's own drawing
-            b.addAction(new NotificationCompat.Action.Builder(0, actionLabel(e.getKey()), e.getValue()).setAuthenticationRequired(false).build());   // works from the lock screen without unlocking
+            b.addAction(new NotificationCompat.Action.Builder(0, A_DONE.equals(e.getKey()) ? tinted(c, theme, actionLabel(e.getKey())) : actionLabel(e.getKey()), e.getValue()).setAuthenticationRequired(false).build());   // works from the lock screen without unlocking
         }
         try {
             nm.notify(idFor(tag), b.build());

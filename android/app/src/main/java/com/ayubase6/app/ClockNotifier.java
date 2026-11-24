@@ -59,7 +59,7 @@ final class ClockNotifier {
     }
     private static NotificationCompat.Builder base(Context c) { return base(c, "timer"); }
     private static NotificationCompat.Builder base(Context c, String part) {
-        return new NotificationCompat.Builder(c, CH).setSmallIcon(R.drawable.ic_stat_lotus).setColor(NotificationArt.REMINDERS.deep)
+        return new NotificationCompat.Builder(c, CH).setSmallIcon(R.drawable.ic_stat_lotus).setColor(NotificationArt.accentColor(c, NotificationArt.REMINDERS))
             .setOnlyAlertOnce(true).setSilent(true).setOngoing(true).setAutoCancel(false)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC).setCategory(NotificationCompat.CATEGORY_STOPWATCH)
             .setContentIntent(open(c, part));

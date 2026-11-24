@@ -366,13 +366,12 @@ public class AlarmService extends Service {
         Intent open = new Intent(this, AlarmActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_NO_USER_ACTION);
         PendingIntent full = PendingIntent.getActivity(this, 7302, open, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         NotificationCompat.Builder b = new NotificationCompat.Builder(this, CHANNEL_ALARMS)
-            .setSmallIcon(R.drawable.ic_stat_lotus)
+            .setSmallIcon(ReminderScheduler.smallIcon(this))   // the lotus, in the section colour like every other notification
             .setContentTitle(ReminderScheduler.noTime(title))
             .setShowWhen(false)
             .setContentText(body)
             .setStyle(new NotificationCompat.BigTextStyle().bigText(body))
-            .setColor(theme().deep)
-            .setColorized(true)   // a ringing alarm (foreground service) may fill the whole card with its section colour
+            .setColor(NotificationArt.accentColor(this, theme()))   // not colorized: the card looks the same as the other notifications (section-coloured title, icon and Done)
             .setLargeIcon(NotificationArt.alarm(theme()))   // an alarm clock in the section's colour
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setPriority(NotificationCompat.PRIORITY_MAX)
@@ -381,10 +380,11 @@ public class AlarmService extends Service {
             .setAutoCancel(false)
             .setContentIntent(full)
             .setDeleteIntent(action("stop", 7314));   // swiped away (Android 14+ allows it): stop the sound too
+        ReminderScheduler.sectionTitle(this, b, theme(), ReminderScheduler.noTime(title), body);
         if (!preview) b.setFullScreenIntent(full, true);
         if (canSnooze()) b.addAction(0, "Snooze " + snoozeMin() + " min", action("snooze", 7311));
         b.addAction(0, "Stop", action("stop", 7312));
-        if (key.startsWith("routine-")) b.addAction(0, "✓ Done", action("done", 7313));
+        if (key.startsWith("routine-")) b.addAction(0, ReminderScheduler.tinted(this, theme(), "✓ Done"), action("done", 7313));
         return b.build();
     }
 
