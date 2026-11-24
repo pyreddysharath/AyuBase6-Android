@@ -31,6 +31,14 @@ function patch(find, repl, label) {
 patch('<head>\n<meta charset="UTF-8">\n',
   '<head>\n<meta charset="UTF-8">\n<script>window.AYU_ANDROID=true;window.AYU_WWW_VERSION=' + (parseInt(process.env.VERSION_CODE, 10) || 0) + ';window.AYU_LIVE_BASE=' + JSON.stringify(LIVE) + ';</script>\n<script src="android-bridge.js"></script>\n',
   'bridge');
+// No white screen while the page loads: the launch picture stays until the first screen has drawn (MainActivity waits for AyuBoot.ready()).
+patch('<meta name="viewport" content="width=device-width, initial-scale=1.0">\n',
+  '<script>(function(){var d=0;function go(){if(d)return;d=1;try{AyuBoot.ready()}catch(e){}}document.addEventListener("DOMContentLoaded",function(){requestAnimationFrame(function(){requestAnimationFrame(go)})});setTimeout(go,3500)})();</script>\n<meta name="viewport" content="width=device-width, initial-scale=1.0">\n',
+  'boot ready');
+// The Google Fonts list no longer holds back the first screen (the fonts swap in when they arrive).
+patch('<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">',
+  '<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media=\'all\'">',
+  'fonts not blocking');
 patch("new URL('content/' + folder + '/media/' + file, document.baseURI)",
   "new URL('content/' + folder + '/media/' + file, window.AYU_LIVE_BASE || document.baseURI)",
   'live media');

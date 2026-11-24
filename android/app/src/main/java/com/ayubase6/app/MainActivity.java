@@ -5,15 +5,26 @@ import android.os.Bundle;
 import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
+    // The launch picture stays until the page has drawn its first screen (the page tells us), or 4 s at most, so there is no white screen
+    static volatile boolean bootReady = false;
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(AyuRemindersPlugin.class);
+        final long t0 = android.os.SystemClock.uptimeMillis();
+        try {
+            androidx.core.splashscreen.SplashScreen.installSplashScreen(this)
+                .setKeepOnScreenCondition(() -> !bootReady && android.os.SystemClock.uptimeMillis() - t0 < 4000);
+        } catch (Throwable ignored) {}
         super.onCreate(savedInstanceState);
         // Text at the same size as the website: the phone's font-size setting does not enlarge the app's text.
         // (Pinch-zoom still works.) To follow the phone again, remove this line.
         if (getBridge() != null && getBridge().getWebView() != null) {
             android.webkit.WebView wv = getBridge().getWebView();
             wv.getSettings().setTextZoom(100);
+            wv.addJavascriptInterface(new Object() {
+                @android.webkit.JavascriptInterface public void ready() { bootReady = true; }
+            }, "AyuBoot");
             // Ads: the website's AdSense runs in the app through Google's WebView API for Ads.
             wv.getSettings().setJavaScriptEnabled(true);
             wv.getSettings().setDomStorageEnabled(true);
