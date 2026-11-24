@@ -786,8 +786,7 @@ final class ReminderScheduler {
         try {
             String tone = prefs(c).getString("eyesSound", "");
             if ("none".equals(tone)) return;   // muted in the app
-            android.net.Uri u = tone.matches("^[a-z]{1,12}$|^content://\\S{1,300}$") ? AlarmService.notifTone(c, tone) : null;
-            if (u == null) u = android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_NOTIFICATION);
+            android.net.Uri u = AlarmService.rawTone(c, "chime");   // always the app's Chime
             android.media.Ringtone r = android.media.RingtoneManager.getRingtone(c, u);
             if (r == null) return;
             r.setAudioAttributes(new android.media.AudioAttributes.Builder()
