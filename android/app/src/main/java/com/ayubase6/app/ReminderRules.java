@@ -26,7 +26,7 @@ final class ReminderRules {
         String say = "", voice = "", lang = "";   // Speak: what to read out (empty = nothing), the voice and its language
         Due vib(JSONObject o) {
             if (o != null) {
-                vibrate = o.optBoolean("vibrate", true); String t = o.optString("sound", ""); sound = t.matches("^[a-z]{1,12}$") ? t : "";
+                vibrate = o.optBoolean("vibrate", true); String t = o.optString("sound", ""); sound = t.matches("^[a-z]{1,12}$|^content://[^\\s\"]{1,300}$") ? t : "";
                 JSONObject sp = o.optJSONObject("speak");
                 if (sp != null && sp.optBoolean("on", false)) {
                     String tx = sp.optString("text", "").trim();

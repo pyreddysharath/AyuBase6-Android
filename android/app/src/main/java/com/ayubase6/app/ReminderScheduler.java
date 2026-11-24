@@ -373,14 +373,14 @@ final class ReminderScheduler {
      *  "tn2_": the sound is named, not numbered (the old "tone_" channels could point at no file after an update: no sound). */
     static final String TONE_CH = "tn2_";
     static String toneChannel(Context c, String tone, boolean vibrate) {
-        String id = TONE_CH + tone + (vibrate ? "" : "_nv");
+        String id = TONE_CH + (tone.startsWith("content://") ? "u" + Integer.toHexString(tone.hashCode()) : tone) + (vibrate ? "" : "_nv");
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return id;
         NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
         if (nm == null || nm.getNotificationChannel(id) != null) return id;
-        NotificationChannel ch = new NotificationChannel(id, ("none".equals(tone) ? "Reminders · no sound" : "Checks · " + tone) + (vibrate ? "" : " (no vibration)"), NotificationManager.IMPORTANCE_HIGH);
+        NotificationChannel ch = new NotificationChannel(id, ("none".equals(tone) ? "Reminders · no sound" : "Checks · " + (tone.startsWith("content:") ? "phone sound" : tone)) + (vibrate ? "" : " (no vibration)"), NotificationManager.IMPORTANCE_HIGH);
         ch.setDescription("Checks notifications with this sound");
         if ("none".equals(tone)) ch.setSound(null, null);   // No sound (vibrate only)
-        else ch.setSound(AlarmService.rawTone(c, tone), new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_NOTIFICATION)
+        else ch.setSound(AlarmService.notifTone(c, tone), new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_NOTIFICATION)
             .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build());
         ch.enableVibration(vibrate);
         ch.setVibrationPattern(vibrate ? new long[]{0, 200, 100, 200, 100, 200} : new long[]{0});
@@ -786,7 +786,7 @@ final class ReminderScheduler {
         try {
             String tone = prefs(c).getString("eyesSound", "");
             if ("none".equals(tone)) return;   // muted in the app
-            android.net.Uri u = tone.matches("^[a-z]{1,12}$") ? AlarmService.rawTone(c, tone) : null;
+            android.net.Uri u = tone.matches("^[a-z]{1,12}$|^content://\\S{1,300}$") ? AlarmService.notifTone(c, tone) : null;
             if (u == null) u = android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_NOTIFICATION);
             android.media.Ringtone r = android.media.RingtoneManager.getRingtone(c, u);
             if (r == null) return;

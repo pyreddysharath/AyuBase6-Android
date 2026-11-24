@@ -303,6 +303,13 @@ public class AlarmService extends Service {
 
     static File ownTone(Context c) { return new File(c.getFilesDir(), "alarm-own-tone"); }
 
+    /** The sound of a notification: one of the phone's own sounds (content://), "phone" (its default notification sound) or an app tone. */
+    static Uri notifTone(Context c, String tone) {
+        if (tone != null && tone.startsWith("content://")) return Uri.parse(tone);
+        if ("phone".equals(tone)) { Uri u = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION); if (u != null) return u; }
+        return rawTone(c, tone);
+    }
+
     /** The app tone by name (android.resource://<app>/raw/tone_x): a number would point at another file after an update. */
     static Uri rawTone(Context c, String id) {
         String n = "tone_" + (id == null ? "" : id.replaceAll("[^a-z]", ""));
