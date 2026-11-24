@@ -777,6 +777,18 @@ final class ReminderScheduler {
             for (android.service.notification.StatusBarNotification s : nm.getActiveNotifications()) if (s.getId() == idFor(tag)) there = true;
             if (!there) return;
             show(c, tag, title, "✓ 20 seconds done. Back to your screen.", true, NotificationArt.forKey(section, "break"), section, "break");
+            chime(c);
+        } catch (Exception ignored) {}
+    }
+    /** A short sound when the 20 seconds are over (follows the phone's sound mode: silent stays silent). */
+    private static void chime(Context c) {
+        try {
+            android.net.Uri u = android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_NOTIFICATION);
+            android.media.Ringtone r = android.media.RingtoneManager.getRingtone(c, u);
+            if (r == null) return;
+            r.setAudioAttributes(new android.media.AudioAttributes.Builder()
+                .setUsage(android.media.AudioAttributes.USAGE_NOTIFICATION_EVENT).setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION).build());
+            r.play();
         } catch (Exception ignored) {}
     }
 }
