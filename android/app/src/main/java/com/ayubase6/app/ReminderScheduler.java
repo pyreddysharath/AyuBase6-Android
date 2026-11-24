@@ -443,6 +443,7 @@ final class ReminderScheduler {
             .putExtra(EXTRA_KEY, tapKey == null ? "" : tapKey)
             .putExtra(EXTRA_SECTION, section == null ? "" : section);
         PendingIntent pi = PendingIntent.getActivity(c, idFor(tag), open, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        if ("break".equals(tapKey) && sound != null && !sound.isEmpty()) prefs(c).edit().putString("eyesSound", sound).apply();   // the end-of-timer sound follows the Eyes sound
         // Vibrate switch off: the same sound, without vibration (Android 8+ keeps vibration per channel)
         String channel = silent ? CHANNEL_UPDATES : (sound != null && !sound.isEmpty()) ? toneChannel(c, sound, vibrate) : (vibrate ? CHANNEL_REMINDERS : CHANNEL_REMINDERS_QUIET);
         NotificationCompat.Builder b = new NotificationCompat.Builder(c, channel)
@@ -783,7 +784,10 @@ final class ReminderScheduler {
     /** A short sound when the 20 seconds are over (follows the phone's sound mode: silent stays silent). */
     private static void chime(Context c) {
         try {
-            android.net.Uri u = android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_NOTIFICATION);
+            String tone = prefs(c).getString("eyesSound", "");
+            if ("none".equals(tone)) return;   // muted in the app
+            android.net.Uri u = tone.matches("^[a-z]{1,12}$") ? AlarmService.rawTone(c, tone) : null;
+            if (u == null) u = android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_NOTIFICATION);
             android.media.Ringtone r = android.media.RingtoneManager.getRingtone(c, u);
             if (r == null) return;
             r.setAudioAttributes(new android.media.AudioAttributes.Builder()
