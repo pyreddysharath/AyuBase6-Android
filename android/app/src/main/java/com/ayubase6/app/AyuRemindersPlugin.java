@@ -52,6 +52,10 @@ public class AyuRemindersPlugin extends Plugin {
     }
 
     /** The page's Clock state: timer, stopwatch, world (each only if newer than the phone's copy, by its "v"). */
+    // The page has drawn its first screen: the launch picture can go
+    @PluginMethod
+    public void bootReady(PluginCall call) { MainActivity.bootReady = true; call.resolve(); }
+
     @PluginMethod
     public void clockSet(PluginCall call) {
         android.content.Context c = getContext();
