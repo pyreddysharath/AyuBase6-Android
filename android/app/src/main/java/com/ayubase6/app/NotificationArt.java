@@ -40,7 +40,8 @@ final class NotificationArt {
     static Theme forKey(String section, String key) {
         if ("mind".equals(key)) return MIND;
         if ("test".equals(key)) return LOGO;
-        if (key != null && key.matches("break|walk|drink|posture|stretch|breathe|eyeex")) return ROUTINES;
+        String bk = key == null ? "" : key.replaceFirst("^(preview[-:]|nudge-)+", "");   // a preview or scheduled key still means the same Health Break
+        if (bk.matches("break|walk|drink|posture|stretch|breathe|eyeex|stand|break-ex")) return ROUTINES;
         return forSection(section);
     }
 

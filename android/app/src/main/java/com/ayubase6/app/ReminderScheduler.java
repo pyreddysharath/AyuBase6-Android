@@ -391,15 +391,15 @@ final class ReminderScheduler {
 
     /** The reminder as the app draws it. Closed (`open` false): one line of text with Start and the bell beside it.
      *  Open: the whole text, then Start and the bell on the last line (without Start the bell stays beside the text). */
-    private static android.widget.RemoteViews offView(Context c, String title, String body, android.graphics.Bitmap bell, PendingIntent off, PendingIntent start, boolean open, long countMs) {
+    private static android.widget.RemoteViews offView(Context c, String title, String body, android.graphics.Bitmap bell, PendingIntent off, PendingIntent start, boolean open, long countMs, PendingIntent done, PendingIntent notYet, int tint) {
         android.widget.RemoteViews v = new android.widget.RemoteViews(c.getPackageName(), R.layout.notif_reminder);
         v.setTextViewText(R.id.nr_title, title == null ? "" : title);
         v.setTextViewText(R.id.nr_text, body == null ? "" : body);
         v.setInt(R.id.nr_text, "setMaxLines", open ? 6 : 1);
         boolean counting = countMs > 0;   // Eyes (20-20-20) after Start: the countdown sits where the Start button was
-        boolean row = open && (start != null || counting);
+        boolean row = open && (start != null || counting || done != null);
         v.setViewVisibility(R.id.nr_row, row ? android.view.View.VISIBLE : android.view.View.GONE);
-        v.setViewVisibility(R.id.nr_off_side, row ? android.view.View.GONE : android.view.View.VISIBLE);
+        v.setViewVisibility(R.id.nr_off_side, row || off == null ? android.view.View.GONE : android.view.View.VISIBLE);
         v.setViewVisibility(R.id.nr_start_side, !row && start != null && !counting ? android.view.View.VISIBLE : android.view.View.GONE);
         v.setViewVisibility(R.id.nr_start, start != null && !counting ? android.view.View.VISIBLE : android.view.View.GONE);
         v.setViewVisibility(R.id.nr_count_side, !row && counting ? android.view.View.VISIBLE : android.view.View.GONE);
@@ -410,8 +410,17 @@ final class ReminderScheduler {
                 v.setChronometerCountDown(id, true); v.setChronometer(id, base, "%s", true);
             }
         }
-        v.setImageViewBitmap(R.id.nr_off, bell); v.setImageViewBitmap(R.id.nr_off_side, bell);
-        v.setOnClickPendingIntent(R.id.nr_off, off); v.setOnClickPendingIntent(R.id.nr_off_side, off);
+        if (off != null) {
+            v.setImageViewBitmap(R.id.nr_off, bell); v.setImageViewBitmap(R.id.nr_off_side, bell);
+            v.setOnClickPendingIntent(R.id.nr_off, off); v.setOnClickPendingIntent(R.id.nr_off_side, off);
+        } else v.setViewVisibility(R.id.nr_off, android.view.View.GONE);
+        // Day Plan: Done and Not yet are drawn here so that Done can be in the section colour
+        v.setViewVisibility(R.id.nr_done, row && done != null ? android.view.View.VISIBLE : android.view.View.GONE);
+        v.setViewVisibility(R.id.nr_notyet, row && notYet != null ? android.view.View.VISIBLE : android.view.View.GONE);
+        if (done != null) v.setOnClickPendingIntent(R.id.nr_done, done);
+        if (notYet != null) v.setOnClickPendingIntent(R.id.nr_notyet, notYet);
+        // Start, the countdown and Done in the section colour
+        for (int id : new int[]{R.id.nr_start, R.id.nr_start_side, R.id.nr_count, R.id.nr_count_side, R.id.nr_done}) v.setTextColor(id, tint);
         if (start != null) { v.setOnClickPendingIntent(R.id.nr_start, start); v.setOnClickPendingIntent(R.id.nr_start_side, start); }
         return v;
     }
@@ -475,12 +484,13 @@ final class ReminderScheduler {
             } catch (Exception | OutOfMemoryError e) { pic = false; }
         }
         boolean own = false;
-        if (!pic && acts.containsKey(A_OFF_THIS)) {   // "Turn off this" is a bell icon at the bottom right; on Eyes, Start sits on the same line
+        if (!pic && (acts.containsKey(A_OFF_THIS) || acts.containsKey(A_DONE))) {   // "Turn off this" is a bell icon at the bottom right; on Eyes, Start sits on the same line
             try {
                 boolean dark = (c.getResources().getConfiguration().uiMode & android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES;
                 android.graphics.Bitmap bell = art("belloff" + theme.key() + dark, () -> NotificationArt.bellOff(theme, dark));
-                PendingIntent off = acts.get(A_OFF_THIS), start = acts.get(A_EYES_START);
-                android.widget.RemoteViews small = offView(c, title, body, bell, off, start, false, countMs), big = offView(c, title, body, bell, off, start, true, countMs);
+                PendingIntent off = acts.get(A_OFF_THIS), start = acts.get(A_EYES_START), dn = acts.get(A_DONE), ny = acts.get(A_NOT_YET);
+                int tint = NotificationArt.titleColor(c, theme);
+                android.widget.RemoteViews small = offView(c, title, body, bell, off, start, false, countMs, dn, ny, tint), big = offView(c, title, body, bell, off, start, true, countMs, dn, ny, tint);
                 small.setTextColor(R.id.nr_title, NotificationArt.titleColor(c, theme)); big.setTextColor(R.id.nr_title, NotificationArt.titleColor(c, theme));
                 b.setStyle(new NotificationCompat.DecoratedCustomViewStyle()).setCustomContentView(small).setCustomBigContentView(big).setCustomHeadsUpContentView(small);
                 b.setLargeIcon((android.graphics.Bitmap) null);   // no picture at the top right: the text uses the full width
@@ -496,7 +506,7 @@ final class ReminderScheduler {
         }
         if (!own && !pic && tag != null && tag.endsWith("test")) b.setLargeIcon((android.graphics.Bitmap) null);   // the test notification: no big logo, as in the newer notifications
         for (java.util.Map.Entry<String, PendingIntent> e : acts.entrySet()) {
-            if (own && (A_OFF_THIS.equals(e.getKey()) || A_EYES_START.equals(e.getKey()))) continue;   // already in the app's own drawing
+            if (own && (A_OFF_THIS.equals(e.getKey()) || A_EYES_START.equals(e.getKey()) || A_DONE.equals(e.getKey()) || A_NOT_YET.equals(e.getKey()))) continue;   // already in the app's own drawing
             b.addAction(new NotificationCompat.Action.Builder(0, A_DONE.equals(e.getKey()) ? tinted(c, theme, actionLabel(e.getKey())) : actionLabel(e.getKey()), e.getValue()).setAuthenticationRequired(false).build());   // works from the lock screen without unlocking
         }
         try {
