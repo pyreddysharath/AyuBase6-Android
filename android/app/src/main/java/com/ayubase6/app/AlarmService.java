@@ -281,7 +281,7 @@ public class AlarmService extends Service {
         if (answered || System.currentTimeMillis() < buttonsFrom || running != this) return;
         answered = true;
         String a = "lock".equals(which) ? lockAction() : keyAction();
-        if ("stop".equals(a)) stopAll(); else snooze();
+        if ("stop".equals(a)) userStop(); else snooze();
     }
 
     private Uri toneUri() {
@@ -404,8 +404,14 @@ public class AlarmService extends Service {
     }
 
     // ── what the buttons (notification, alarm screen, volume keys) do ──
+    /** The person pressed Stop (or Snooze with none left). For the Wake-up Alarm this is when the day starts. */
+    void userStop() {
+        if (!preview && "alarm-wake".equals(key)) { try { ReminderScheduler.wakeStopped(getApplicationContext()); } catch (Exception ignored) {} }
+        stopAll();
+    }
+
     void snooze() {
-        if (preview || !canSnooze()) { stopAll(); return; }
+        if (preview || !canSnooze()) { userStop(); return; }
         ReminderScheduler.addAlarmSnooze(this, key, title, body, count + 1, snoozeMin(), cfg, section());
         stopAll();
         AyuRemindersPlugin.alarmChanged();
@@ -421,7 +427,7 @@ public class AlarmService extends Service {
         }, "ayu-alarm-done").start();
     }
 
-    void keyPressed() { if (answered) return; answered = true; if ("stop".equals(keyAction())) stopAll(); else snooze(); }   // snooze in a preview just stops it
+    void keyPressed() { if (answered) return; answered = true; if ("stop".equals(keyAction())) userStop(); else snooze(); }   // snooze in a preview just stops it
 
     /** Rang for the chosen minutes without an answer: stop ringing, leave a normal notification (Done / Not yet). */
     void missed() {

@@ -75,8 +75,46 @@ final class ReminderScheduler {
         try {
             JSONObject old = wakeShift(c);
             String today = local(System.currentTimeMillis() / 60000L).day;
-            prefs(c).edit().putString("wakeShift", new JSONObject().put("day", today).put("min", (old == null ? 0 : old.optInt("min")) + minutes).toString()).apply();
+            prefs(c).edit().putString("wakeShift", new JSONObject().put("day", today).put("min", (old == null ? 0 : old.optInt("min")) + minutes).toString())
+                .putString("wakeTotal", new JSONObject().put("day", today).put("min", wakeTotal(c) + minutes).toString()).apply();   // wakeTotal stays when the app takes the shift over
         } catch (Exception ignored) {}
+    }
+    /** All minutes today's wake-up alarm has moved the day (snoozes and the final Stop); not cleared when the app takes the shift over. */
+    static int wakeTotal(Context c) {
+        try {
+            JSONObject o = new JSONObject(prefs(c).getString("wakeTotal", "{}"));
+            return local(System.currentTimeMillis() / 60000L).day.equals(o.optString("day")) ? Math.max(0, o.optInt("min", 0)) : 0;
+        } catch (Exception e) { return 0; }
+    }
+    /** When the person got up today: {day, min (minute of the day), guess (true = from a snooze, not a Stop), ts}, or null. The app shows it under the Wake-up time. */
+    static JSONObject wakeActual(Context c) {
+        try {
+            JSONObject o = new JSONObject(prefs(c).getString("wakeActual", "{}"));
+            return local(System.currentTimeMillis() / 60000L).day.equals(o.optString("day")) ? o : null;
+        } catch (Exception e) { return null; }
+    }
+    private static void saveWakeActual(Context c, int min, boolean guess) {
+        try { prefs(c).edit().putString("wakeActual", new JSONObject().put("day", local(System.currentTimeMillis() / 60000L).day).put("min", min).put("guess", guess).put("ts", System.currentTimeMillis()).toString()).apply(); } catch (Exception ignored) {}
+    }
+    private static int wakeAlarmAt(Context c) {
+        try { JSONObject a = AlarmService.config(c, "alarm-wake"); return a == null ? -1 : a.optInt("at", -1); } catch (Exception e) { return -1; }
+    }
+    /** The Wake-up Alarm was snoozed: the time it rings next is the best guess of when the person is up (a Stop later replaces it). */
+    static void wakeSnoozed(Context c) {
+        int at = wakeAlarmAt(c); if (at < 0) return;
+        JSONObject cur = wakeActual(c); if (cur != null && !cur.optBoolean("guess", true)) return;
+        saveWakeActual(c, at + wakeTotal(c), true);
+    }
+    /** The person pressed Stop on the Wake-up Alarm: that is when the day starts. Only a Stop 0 to 3 hours after the alarm counts, and only the first one of the day. */
+    static void wakeStopped(Context c) {
+        int at = wakeAlarmAt(c); if (at < 0) return;
+        JSONObject cur = wakeActual(c); if (cur != null && !cur.optBoolean("guess", true)) return;
+        int now = local(System.currentTimeMillis() / 60000L).min, delta = now - at;
+        if (delta < 0 || delta > 180) return;
+        int extra = delta - wakeTotal(c);
+        if (extra > 0) addWakeShift(c, extra);
+        saveWakeActual(c, now, false);
+        if (extra > 0) reschedule(c);
     }
     static void clearWakeShift(Context c) { prefs(c).edit().remove("wakeShift").apply(); }
 
@@ -674,7 +712,7 @@ final class ReminderScheduler {
             keep.put(e);
             saveSnoozes(c, keep);
         } catch (Exception ignored) {}
-        if ("alarm-wake".equals(key)) addWakeShift(c, minutes);   // the day starts later: today's checks move with it
+        if ("alarm-wake".equals(key)) { addWakeShift(c, minutes); wakeSnoozed(c); }   // the day starts later: today's checks move with it
         reschedule(c);
         showSnoozed(c, key, title, at * 60000L, section);
     }

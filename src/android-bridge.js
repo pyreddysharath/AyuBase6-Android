@@ -323,6 +323,7 @@
     return P.checkPermissions().then(function(r){
       setPerm(mapPerm(r && r.notifications));
       setSnoozed(r && r.snoozed);
+      if(r && r.wakeActual && typeof window.ayuWakeActual === 'function'){ try{ window.ayuWakeActual(r.wakeActual); }catch(e){} }   // when the person got up today
       if(r && r.wakeShift && r.wakeShift.min > 0 && typeof window.ayuWakeShift === 'function'){   // the wake-up alarm was snoozed while the app was closed
         try{ window.ayuWakeShift(+r.wakeShift.min, String(r.wakeShift.day || '')); }catch(e){}
         if(typeof P.wakeShiftClear === 'function') P.wakeShiftClear().catch(noop);

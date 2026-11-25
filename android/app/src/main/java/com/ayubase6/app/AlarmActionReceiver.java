@@ -15,6 +15,6 @@ public class AlarmActionReceiver extends BroadcastReceiver {
         String a = intent.getStringExtra(EX_ACTION);
         if ("snooze".equals(a)) s.snooze();
         else if ("done".equals(a)) s.done();
-        else s.stopAll();
+        else s.userStop();
     }
 }

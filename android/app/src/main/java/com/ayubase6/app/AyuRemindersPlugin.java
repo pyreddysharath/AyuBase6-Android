@@ -161,6 +161,8 @@ public class AyuRemindersPlugin extends Plugin {
         r.put("selfInstall", false);          // no installer inside the app: a new version downloads in the browser
         r.put("snoozed", ReminderScheduler.snoozedAlarms(getContext()));   // snoozed alarms and when each rings next
         JSONObject ws = ReminderScheduler.wakeShift(getContext());
+        JSONObject wa = ReminderScheduler.wakeActual(getContext());
+        if (wa != null) r.put("wakeActual", wa);   // when the person got up today (Stop, or the last snooze)
         if (ws != null) r.put("wakeShift", ws);   // the wake-up alarm was snoozed today: the app moves the day by these minutes
         try {
             android.content.pm.PackageInfo pi = getContext().getPackageManager().getPackageInfo(getContext().getPackageName(), 0);

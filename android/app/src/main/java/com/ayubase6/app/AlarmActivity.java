@@ -67,7 +67,7 @@ public class AlarmActivity extends Activity {
         done.setOnClickListener(v -> { AlarmService s = AlarmService.current(); if (s != null) s.done(); finish(); });
         root.addView(done, lp(12 * dp));
         Button stop = button("Stop", Color.TRANSPARENT, ink);
-        stop.setOnClickListener(v -> { AlarmService s = AlarmService.current(); if (s != null) s.stopAll(); finish(); });
+        stop.setOnClickListener(v -> { AlarmService s = AlarmService.current(); if (s != null) s.userStop(); finish(); });
         root.addView(stop, lp(12 * dp));
         setContentView(root);
         refresh();
