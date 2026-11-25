@@ -763,7 +763,7 @@ final class ReminderScheduler {
                 .setGroup(g).setGroupSummary(true).setGroupAlertBehavior(NotificationCompat.GROUP_ALERT_CHILDREN)
                 .setSilent(true).setOnlyAlertOnce(true).setAutoCancel(true).build();
             NotificationManagerCompat.from(c).notify(summaryId(g), n);
-        } catch (SecurityException | RuntimeException ignored) { }
+        } catch (RuntimeException ignored) { }
     }
     /** Takes a section's header away when none of its notifications is left. */
     static void dropEmptySummaries(Context c) {
