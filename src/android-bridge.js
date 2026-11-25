@@ -290,6 +290,7 @@
   // Help's check: ringer, volumes, Do Not Disturb, channels, exact alarms, battery, a force stop when the app was last closed
   if(typeof P.soundCheck === 'function') state.soundCheck = function(){ return P.soundCheck(); };
   state.openFullScreen = function(){ return typeof P.openFullScreenSettings === 'function' ? P.openFullScreenSettings().catch(noop) : Promise.resolve(); };
+  state.openOverlay = function(){ return typeof P.openOverlaySettings === 'function' ? P.openOverlaySettings().catch(noop) : Promise.resolve(); };
   state.openExact = function(){ return P.openExactAlarmSettings().catch(noop); };
   state.openBattery = function(){ return typeof P.openBatterySettings === 'function' ? P.openBatterySettings().catch(noop) : Promise.resolve(); };
   // Clock: the page's timer / stopwatch / World Clock state goes to the phone (live notifications with buttons, the timer's alarm)

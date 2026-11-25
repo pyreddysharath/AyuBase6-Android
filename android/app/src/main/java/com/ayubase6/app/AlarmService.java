@@ -201,8 +201,15 @@ public class AlarmService extends Service {
         if (ringSec > 0) { autoStop = this::missed; main.postDelayed(autoStop, ringSec * 1000L); }
         else if (ringMin > 0) { autoStop = this::missed; main.postDelayed(autoStop, ringMin * 60000L); }
         AlarmActivity a = screen.get();
-        if (a != null) a.refresh();
+        if (a != null) a.refresh(); else openScreen();
         return START_NOT_STICKY;
+    }
+
+    /** Opens the alarm screen straight away, also while the phone is in use (otherwise Android shows only a pop-up card).
+     *  Needs "Display over other apps"; without it Android may refuse, and the notification with Snooze / Stop remains. */
+    private void openScreen() {
+        try { startActivity(new Intent(this, AlarmActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_NO_USER_ACTION)); }
+        catch (Exception e) { Log.w(ReminderScheduler.TAG, "alarm screen not opened", e); }
     }
 
     private static String str(String s) { return s == null ? "" : s; }
@@ -369,6 +376,13 @@ public class AlarmService extends Service {
         return PendingIntent.getBroadcast(this, code, i, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
     }
 
+    /** The notification text: not the plain "Your alarm." — the time instead. */
+    private String shownBody() {
+        String b = body == null ? "" : body.trim();
+        if (b.equalsIgnoreCase("Your alarm.") || b.equalsIgnoreCase("Your alarm")) return java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).format(new java.util.Date());
+        return body;
+    }
+
     private Notification buildNotification() {
         Intent open = new Intent(this, AlarmActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_NO_USER_ACTION);
         PendingIntent full = PendingIntent.getActivity(this, 7302, open, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
@@ -376,8 +390,8 @@ public class AlarmService extends Service {
             .setSmallIcon(ReminderScheduler.smallIcon(this))   // the lotus, in the section colour like every other notification
             .setContentTitle(ReminderScheduler.noTime(title))
             .setShowWhen(false)
-            .setContentText(body)
-            .setStyle(new NotificationCompat.BigTextStyle().bigText(body))
+            .setContentText(shownBody())
+            .setStyle(new NotificationCompat.BigTextStyle().bigText(shownBody()))
             .setColor(NotificationArt.accentColor(this, theme()))   // not colorized: the card looks the same as the other notifications (section-coloured title, icon and Done)
             .setLargeIcon(NotificationArt.alarm(theme()))   // an alarm clock in the section's colour
             .setCategory(NotificationCompat.CATEGORY_ALARM)
@@ -387,7 +401,7 @@ public class AlarmService extends Service {
             .setAutoCancel(false)
             .setContentIntent(full)
             .setDeleteIntent(action("stop", 7314));   // swiped away (Android 14+ allows it): stop the sound too
-        ReminderScheduler.sectionTitle(this, b, theme(), ReminderScheduler.noTime(title), body);
+        ReminderScheduler.sectionTitle(this, b, theme(), ReminderScheduler.noTime(title), shownBody());
         if (!preview) b.setFullScreenIntent(full, true);
         if (canSnooze()) b.addAction(0, "Snooze " + snoozeMin() + " min", action("snooze", 7311));
         b.addAction(0, "Stop", action("stop", 7312));

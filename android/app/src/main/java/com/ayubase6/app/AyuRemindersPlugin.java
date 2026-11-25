@@ -213,6 +213,7 @@ public class AyuRemindersPlugin extends Plugin {
                 r.put("dnd", f == android.app.NotificationManager.INTERRUPTION_FILTER_ALL || f == android.app.NotificationManager.INTERRUPTION_FILTER_UNKNOWN ? "off"
                     : f == android.app.NotificationManager.INTERRUPTION_FILTER_PRIORITY ? "priority" : f == android.app.NotificationManager.INTERRUPTION_FILTER_ALARMS ? "alarms" : "none");
                 if (Build.VERSION.SDK_INT >= 34) r.put("fullScreen", nm.canUseFullScreenIntent());
+                r.put("overlay", Settings.canDrawOverlays(c));   // "Display over other apps": lets the alarm screen open while the phone is in use
                 ReminderScheduler.ensureChannels(c); AlarmService.ensureChannel(c);
                 org.json.JSONArray chs = new org.json.JSONArray();
                 for (android.app.NotificationChannel ch : nm.getNotificationChannels()) {
@@ -399,6 +400,13 @@ public class AyuRemindersPlugin extends Plugin {
             openAndReturn(call, new Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT, Uri.parse("package:" + getContext().getPackageName())),
                 () -> ((android.app.NotificationManager) getContext().getSystemService(android.content.Context.NOTIFICATION_SERVICE)).canUseFullScreenIntent());
         } else call.resolve(status());
+    }
+
+    /** The page where "Display over other apps" is allowed for AyuBase6 (the alarm screen opens even while the phone is in use). */
+    @PluginMethod
+    public void openOverlaySettings(PluginCall call) {
+        openAndReturn(call, new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getContext().getPackageName())),
+            () -> Settings.canDrawOverlays(getContext()));
     }
 
     @PluginMethod
