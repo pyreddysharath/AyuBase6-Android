@@ -13,9 +13,9 @@ public class MainActivity extends BridgeActivity {
         try {
             final android.widget.FrameLayout ov = new android.widget.FrameLayout(this);
             ov.setBackgroundColor(0xFFF6F8FB);   // the app's page colour, as the start screen before it
-            // Two soft corner shapes in the logo's colours: green top-left, blue bottom-right (a big and a smaller circle each)
+            // Two soft corner shapes in the logo's colours: green top-left, blue bottom-right (one big circle each; the earlier version with a smaller second circle is commit 37231e4)
             final float sc = getResources().getDisplayMetrics().widthPixels / 180f;
-            final int[][] sh = { {0xFFCFE6BF, 90, -30, -30, 0, 255}, {0xFFA9D58C, 46, 20, 52, 0, 179}, {0xFFBCD6EF, 90, -30, -30, 1, 255}, {0xFF93BFE8, 46, 20, 52, 1, 179} };
+            final int[][] sh = { {0xFFCFE6BF, 150, -55, -60, 0, 230}, {0xFFBCD6EF, 150, -55, -60, 1, 217} };
             for (int[] d : sh) {
                 android.view.View v = new android.view.View(this);
                 android.graphics.drawable.GradientDrawable g = new android.graphics.drawable.GradientDrawable();
@@ -49,7 +49,7 @@ public class MainActivity extends BridgeActivity {
             final String tip = StartTips.pick(this);
             if (tip != null) {
                 android.widget.TextView tv = new android.widget.TextView(this);
-                tv.setText("\u201C" + tip + "\u201D"); tv.setTextColor(0xFF334155); tv.setTextSize(15f); tv.setGravity(android.view.Gravity.CENTER);
+                tv.setText("\u201C" + tip + "\u201D"); tv.setTextColor(0xFF334155); tv.setTextSize(12f); tv.setGravity(android.view.Gravity.CENTER);
                 tv.setTypeface(null, android.graphics.Typeface.ITALIC);
                 int pad = Math.round(28 * getResources().getDisplayMetrics().density);
                 tv.setPadding(pad, 0, pad, 0);
