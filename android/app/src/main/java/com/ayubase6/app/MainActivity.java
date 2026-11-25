@@ -13,6 +13,21 @@ public class MainActivity extends BridgeActivity {
         try {
             final android.widget.FrameLayout ov = new android.widget.FrameLayout(this);
             ov.setBackgroundColor(0xFFF6F8FB);   // the app's page colour, as the start screen before it
+            // Two soft corner shapes in the logo's colours: green top-left, blue bottom-right (a big and a smaller circle each)
+            final float sc = getResources().getDisplayMetrics().widthPixels / 180f;
+            final int[][] sh = { {0xFFCFE6BF, 90, -30, -30, 0, 255}, {0xFFA9D58C, 46, 20, 52, 0, 179}, {0xFFBCD6EF, 90, -30, -30, 1, 255}, {0xFF93BFE8, 46, 20, 52, 1, 179} };
+            for (int[] d : sh) {
+                android.view.View v = new android.view.View(this);
+                android.graphics.drawable.GradientDrawable g = new android.graphics.drawable.GradientDrawable();
+                g.setShape(android.graphics.drawable.GradientDrawable.OVAL); g.setColor(d[0]);
+                v.setBackground(g); v.setAlpha(d[5] / 255f);
+                int size = Math.round(d[1] * sc);
+                android.widget.FrameLayout.LayoutParams lp = new android.widget.FrameLayout.LayoutParams(size, size,
+                    d[4] == 0 ? (android.view.Gravity.TOP | android.view.Gravity.START) : (android.view.Gravity.BOTTOM | android.view.Gravity.END));
+                if (d[4] == 0) { lp.leftMargin = Math.round(d[2] * sc); lp.topMargin = Math.round(d[3] * sc); }
+                else { lp.rightMargin = Math.round(d[2] * sc); lp.bottomMargin = Math.round(d[3] * sc); }
+                ov.addView(v, lp);
+            }
             android.widget.ImageView iv = new android.widget.ImageView(this);
             iv.setImageResource(R.drawable.splash_brand);
             iv.setAdjustViewBounds(true);
@@ -30,11 +45,27 @@ public class MainActivity extends BridgeActivity {
             } catch (Throwable ignored) {}
             int w = (int) (getResources().getDisplayMetrics().widthPixels * 0.78f);
             ov.addView(iv, new android.widget.FrameLayout.LayoutParams(w, android.view.ViewGroup.LayoutParams.WRAP_CONTENT, android.view.Gravity.CENTER));
+            // One short tip under the logo (from the kept copy; nothing when there is none)
+            final String tip = StartTips.pick(this);
+            if (tip != null) {
+                android.widget.TextView tv = new android.widget.TextView(this);
+                tv.setText("\u201C" + tip + "\u201D"); tv.setTextColor(0xFF334155); tv.setTextSize(15f); tv.setGravity(android.view.Gravity.CENTER);
+                tv.setTypeface(null, android.graphics.Typeface.ITALIC);
+                int pad = Math.round(28 * getResources().getDisplayMetrics().density);
+                tv.setPadding(pad, 0, pad, 0);
+                int H = getResources().getDisplayMetrics().heightPixels;
+                int imgH = Math.round(w * 900f / 1020f);
+                android.widget.FrameLayout.LayoutParams tl = new android.widget.FrameLayout.LayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT, android.view.ViewGroup.LayoutParams.WRAP_CONTENT, android.view.Gravity.TOP);
+                tl.topMargin = (H - imgH) / 2 + Math.round(imgH * 0.74f);
+                ov.addView(tv, tl);
+            }
+            final long minShow = tip != null ? 1500 : 0;
             addContentView(ov, new android.view.ViewGroup.LayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT, android.view.ViewGroup.LayoutParams.MATCH_PARENT));
             final long t0 = android.os.SystemClock.uptimeMillis();
             final android.os.Handler h = new android.os.Handler(android.os.Looper.getMainLooper());
             h.post(new Runnable() { @Override public void run() {
-                if (bootReady || android.os.SystemClock.uptimeMillis() - t0 > 8000) {
+                long el = android.os.SystemClock.uptimeMillis() - t0;
+                if ((bootReady && el >= minShow) || el > 8000) {
                     try { Object pa = iv.getTag(); if (pa instanceof android.animation.Animator) ((android.animation.Animator) pa).cancel(); } catch (Throwable ignored) {}
                     ov.animate().alpha(0f).setDuration(250).withEndAction(() -> {
                         try { ((android.view.ViewGroup) ov.getParent()).removeView(ov); } catch (Throwable ignored) {}
@@ -50,6 +81,7 @@ public class MainActivity extends BridgeActivity {
         try { androidx.core.splashscreen.SplashScreen.installSplashScreen(this); } catch (Throwable ignored) {}
         super.onCreate(savedInstanceState);
         showStartScreen();
+        StartTips.refresh(this);
         // Text at the same size as the website: the phone's font-size setting does not enlarge the app's text.
         // (Pinch-zoom still works.) To follow the phone again, remove this line.
         if (getBridge() != null && getBridge().getWebView() != null) {
