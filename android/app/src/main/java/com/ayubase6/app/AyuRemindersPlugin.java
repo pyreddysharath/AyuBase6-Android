@@ -364,16 +364,7 @@ public class AyuRemindersPlugin extends Plugin {
                             }
                         } catch (Exception ignored) {}
                     }, 350);
-                    // Some phones (Xiaomi, Oppo, Vivo, Realme…) block apps from coming to the front by themselves:
-                    // then say so on the settings page and leave a notification that opens the app.
-                    main.postDelayed(() -> {
-                        try {
-                            if (getActivity().hasWindowFocus()) return;
-                            android.widget.Toast.makeText(getContext(), "Allowed ✓  Tap Back to return to AyuBase6", android.widget.Toast.LENGTH_LONG).show();
-                            if (NotificationManagerCompat.from(getContext()).areNotificationsEnabled())
-                                ReminderScheduler.show(getContext(), BACK_TAG, "Allowed ✓", "Tap to return to AyuBase6", true, NotificationArt.REMINDERS, "", "");
-                        } catch (Exception ignored) {}
-                    }, 1500);
+                    // (No "Allowed ✓" message or note: removed on purpose.)
                     new Thread(() -> ReminderScheduler.reschedule(getContext()), "ayu-perm").start();
                     notifyListeners("permissionsChanged", status());
                     return;
