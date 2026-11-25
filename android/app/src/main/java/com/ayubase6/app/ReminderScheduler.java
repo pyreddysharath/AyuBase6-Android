@@ -392,7 +392,7 @@ final class ReminderScheduler {
             case A_NOT_YET: return "Not yet";
             case A_TAKEN: return "✓ Taken";
             case A_SKIP: return "Skip";
-            case A_SNOOZE10: return "Snooze 10 min";
+            case A_SNOOZE10: return "Snooze";
             case A_EYES_START: return "▶ Start";
             case A_OFF_THIS: return "Turn off this";
             default: return "Turn off all";
