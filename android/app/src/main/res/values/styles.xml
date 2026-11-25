@@ -14,6 +14,9 @@
         <item name="windowNoTitle">true</item>
         <item name="android:windowBackground">@color/ayu_splash_bg</item>
         <item name="android:background">@null</item>
+        <!-- Full screen: no grey shade behind the 3-button bar -->
+        <item name="android:enforceNavigationBarContrast">false</item>
+        <item name="android:enforceStatusBarContrast">false</item>
     </style>
 
 

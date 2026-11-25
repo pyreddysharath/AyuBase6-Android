@@ -6,6 +6,9 @@
     "allowMixedContent": false,
     "backgroundColor": "#f6f8fb"
   },
+  "plugins": {
+    "SystemBars": { "style": "LIGHT", "insetsHandling": "css" }
+  },
   "server": {
     "hostname": "app.ayubase6.com",
     "androidScheme": "https"
