@@ -70,8 +70,9 @@ public class MainActivity extends BridgeActivity {
             final String tip = StartTips.pick(this);
             if (tip != null) {
                 android.widget.TextView tv = new android.widget.TextView(this);
-                tv.setText("\u201C" + tip + "\u201D"); tv.setTextColor(0xFF334155); tv.setTextSize(12f); tv.setGravity(android.view.Gravity.CENTER);
-                tv.setTypeface(null, android.graphics.Typeface.ITALIC);
+                tv.setText("\u201C" + tip + "\u201D"); tv.setTextColor(0xFF334155); tv.setTextSize(13f); tv.setGravity(android.view.Gravity.CENTER);
+                try { android.graphics.Typeface lf = androidx.core.content.res.ResourcesCompat.getFont(this, R.font.lora_italic); tv.setTypeface(lf != null ? lf : android.graphics.Typeface.defaultFromStyle(android.graphics.Typeface.ITALIC)); }
+                catch (Throwable t) { tv.setTypeface(null, android.graphics.Typeface.ITALIC); }   // Lora italic; the system italic if it cannot load
                 int pad = Math.round(28 * getResources().getDisplayMetrics().density);
                 tv.setPadding(pad, 0, pad, 0);
                 kids[3] = tv; ov.addView(tv);
