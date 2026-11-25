@@ -12,7 +12,7 @@ public class MainActivity extends BridgeActivity {
     private void showStartScreen() {
         try {
             final android.widget.FrameLayout ov = new android.widget.FrameLayout(this);
-            ov.setBackgroundColor(0xFFFFFFFF);
+            ov.setBackgroundColor(0xFFF6F8FB);   // the app's page colour, as the start screen before it
             android.widget.ImageView iv = new android.widget.ImageView(this);
             iv.setImageResource(R.drawable.splash_brand);
             iv.setAdjustViewBounds(true);
@@ -24,7 +24,7 @@ public class MainActivity extends BridgeActivity {
             final android.os.Handler h = new android.os.Handler(android.os.Looper.getMainLooper());
             h.post(new Runnable() { @Override public void run() {
                 if (bootReady || android.os.SystemClock.uptimeMillis() - t0 > 4000) {
-                    ov.animate().alpha(0f).setDuration(180).withEndAction(() -> {
+                    ov.animate().alpha(0f).setDuration(250).withEndAction(() -> {
                         try { ((android.view.ViewGroup) ov.getParent()).removeView(ov); } catch (Throwable ignored) {}
                     }).start();
                 } else h.postDelayed(this, 40);
