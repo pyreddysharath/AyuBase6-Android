@@ -90,6 +90,13 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(AyuRemindersPlugin.class);
         try { androidx.core.splashscreen.SplashScreen.installSplashScreen(this); } catch (Throwable ignored) {}
+        // Full screen from the very first moment: the start screen is laid out over the whole screen (under the status and navigation bars) straight away,
+        // so it does not shift when the page later switches the bars to transparent (that shift made the corner shapes look bigger, then smaller)
+        try {
+            androidx.core.view.WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+            getWindow().setStatusBarColor(android.graphics.Color.TRANSPARENT);
+            getWindow().setNavigationBarColor(android.graphics.Color.TRANSPARENT);
+        } catch (Throwable ignored) {}
         super.onCreate(savedInstanceState);
         showStartScreen();
         StartTips.refresh(this);
