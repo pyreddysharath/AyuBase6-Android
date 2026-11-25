@@ -7,7 +7,7 @@
     "backgroundColor": "#f6f8fb"
   },
   "plugins": {
-    "SystemBars": { "style": "LIGHT", "insetsHandling": "css" }
+    "SystemBars": { "style": "LIGHT", "insetsHandling": "css", "initialViewportFitValueHint": "cover" }
   },
   "server": {
     "hostname": "app.ayubase6.com",
