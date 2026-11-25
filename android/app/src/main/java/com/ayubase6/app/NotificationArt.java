@@ -30,7 +30,7 @@ final class NotificationArt {
     static final Theme REMINDERS = new Theme(c("#f8faf3"), c("#eaf2d5"), c("#bccf8f"), c("#7a9546"), c("#8ea85a"), c("#6f8a3a"));
     static final Theme ROUTINES = new Theme(c("#f2fafe"), c("#d8eff9"), c("#a6d9ee"), c("#41aad4"), c("#41aad4"), c("#3c85a2"));   // Care: sky blue
 
-    static final Theme MIND = new Theme(c("#f1f4ff"), c("#dfe5ff"), c("#b4d0ed"), c("#35489b"), c("#35489b"), c("#2f45a2"));   // Mind: indigo-blue
+    static final Theme MIND = new Theme(c("#f1faf5"), c("#dff2e7"), c("#a8d3b8"), c("#3b8460"), c("#3b8460"), c("#33775a"));   // Mind: mint green (from the logo)
 
     static final int[] LOGO_PETALS = {0xFF5aa6dc, 0xFF4c9be4, 0xFF4590c8, 0xFF86b84a, 0xFF8cbd4c};   // the logo: drop, left and right petal, two leaves
     static final Theme LOGO = new Theme(c("#ffffff"), c("#f1f7fc"), c("#b4d0ed"), c("#3982c3"), c("#ffffff"), c("#f1f7fc"));   // Test notification: white card, the logo in its own colours
