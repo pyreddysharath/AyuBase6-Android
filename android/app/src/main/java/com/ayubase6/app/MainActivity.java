@@ -71,14 +71,16 @@ public class MainActivity extends BridgeActivity {
                 kids[3] = tv; ov.addView(tv);
             }
             final long minShow = tip != null ? 1500 : 0;
-            addContentView(ov, new android.view.ViewGroup.LayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT, android.view.ViewGroup.LayoutParams.MATCH_PARENT));
+            // Added to the window itself (not the inset content area), so it always covers the whole screen, whatever the bars are doing
+            try { ((android.view.ViewGroup) getWindow().getDecorView()).addView(ov, new android.widget.FrameLayout.LayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT, android.view.ViewGroup.LayoutParams.MATCH_PARENT)); }
+            catch (Throwable t) { addContentView(ov, new android.view.ViewGroup.LayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT, android.view.ViewGroup.LayoutParams.MATCH_PARENT)); }
             final long t0 = android.os.SystemClock.uptimeMillis();
             final android.os.Handler h = new android.os.Handler(android.os.Looper.getMainLooper());
             h.post(new Runnable() { @Override public void run() {
                 long el = android.os.SystemClock.uptimeMillis() - t0;
                 if ((bootReady && el >= minShow) || el > 8000) {
                     try { Object pa = iv.getTag(); if (pa instanceof android.animation.Animator) ((android.animation.Animator) pa).cancel(); } catch (Throwable ignored) {}
-                    ov.animate().alpha(0f).setDuration(250).withEndAction(() -> {
+                    ov.animate().alpha(0f).setDuration(700).setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator()).withEndAction(() -> {
                         try { ((android.view.ViewGroup) ov.getParent()).removeView(ov); } catch (Throwable ignored) {}
                     }).start();
                 } else h.postDelayed(this, 40);
