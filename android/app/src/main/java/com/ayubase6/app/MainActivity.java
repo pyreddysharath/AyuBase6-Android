@@ -36,7 +36,7 @@ public class MainActivity extends BridgeActivity {
                     if (kids[0] != null) kids[0].layout(-o1, -o2, -o1 + cs, -o2 + cs);
                     if (kids[1] != null) kids[1].layout(W + o1 - cs, H + o2 - cs, W + o1, H + o2);
                     if (kids[2] != null) kids[2].layout((W - lw) / 2, lt, (W - lw) / 2 + lw, lt + lh);
-                    if (kids[3] != null) { int tt = lt + Math.round(lh * 0.74f); kids[3].layout(0, tt, W, tt + kids[3].getMeasuredHeight()); }
+                    if (kids[3] != null) { int tt = lt + Math.round(lh * 1.2f); kids[3].layout(0, tt, W, tt + kids[3].getMeasuredHeight()); }
                 }
             };
             ov.setBackgroundColor(0xFFF6F8FB);   // the app's page colour, as the start screen before it
