@@ -134,6 +134,13 @@ final class ReminderRules {
             if (at != null && at == m) out.add(new Due("alarm-" + al.optString("id"), str(al.opt("title"), 80), str(al.opt("body"), 200),
                 "alerts".equals(al.optString("section")) ? "alerts" : "routines").vib(al));
         }
+        // The Checks (Day Plan) alarm and a Reminders alarm at the same minute: only the Day Plan one rings; the other stays silent
+        boolean dayPlanAlarm = false;
+        for (Due x : out) if ("alarm-wake".equals(x.key)) dayPlanAlarm = true;
+        if (dayPlanAlarm) for (java.util.Iterator<Due> it = out.iterator(); it.hasNext(); ) {
+            String k = it.next().key;
+            if (k.startsWith("alarm-") && !"alarm-wake".equals(k)) it.remove();
+        }
         JSONObject ck = rules.optJSONObject("checks");
         JSONArray items = ck == null ? null : ck.optJSONArray("items");
         if (items != null && dayAllowed(ck, local.dow)) {

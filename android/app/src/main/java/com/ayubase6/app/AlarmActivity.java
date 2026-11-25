@@ -42,27 +42,31 @@ public class AlarmActivity extends Activity {
         root.setOrientation(LinearLayout.VERTICAL);
         root.setGravity(Gravity.CENTER);
         root.setPadding((int) (28 * dp), (int) (48 * dp), (int) (28 * dp), (int) (48 * dp));
-        root.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{t.g0, t.g1}));
+        // A calm, muted tone of the section colour (not the near-white of the notifications): easy on the eyes first thing in the morning
+        boolean care = t != NotificationArt.REMINDERS;
+        final int ink = Color.parseColor(care ? "#0f3d52" : "#2c3d05"), btn = Color.parseColor(care ? "#2a7392" : "#5e7d10");
+        root.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+            new int[]{Color.parseColor(care ? "#a8d4e7" : "#c8dd8f"), Color.parseColor(care ? "#7db8d2" : "#a4c35c")}));
 
         ImageView logo = new ImageView(this);
-        logo.setImageBitmap(NotificationArt.logo(t));
+        logo.setImageBitmap(NotificationArt.alarm(t));   // the alarm clock in the section's colour
         root.addView(logo, new LinearLayout.LayoutParams((int) (84 * dp), (int) (84 * dp)));
 
-        TextView time = text(DateFormat.getTimeInstance(DateFormat.SHORT).format(new Date()), 44, t.title, true);
+        TextView time = text(DateFormat.getTimeInstance(DateFormat.SHORT).format(new Date()), 44, ink, true);
         root.addView(time, lp(18 * dp));
-        titleView = text("", 26, t.title, true);
+        titleView = text("", 26, ink, true);   // the alarm's name; blank when it has none
         root.addView(titleView, lp(10 * dp));
-        bodyView = text("", 17, t.body, false);
+        bodyView = text("", 17, ink, false);
         root.addView(bodyView, lp(8 * dp));
 
-        snoozeBtn = button("Snooze", t.deep, Color.WHITE);
+        snoozeBtn = button("Snooze", btn, Color.WHITE);
         snoozeBtn.setOnClickListener(v -> { AlarmService s = AlarmService.current(); if (s != null) s.snooze(); finish(); });
         root.addView(snoozeBtn, lp(36 * dp));
-        Button done = button("✓ Done", Color.WHITE, t.deep);
+        Button done = button("✓ Done", Color.WHITE, btn);
         doneBtn = done;
         done.setOnClickListener(v -> { AlarmService s = AlarmService.current(); if (s != null) s.done(); finish(); });
         root.addView(done, lp(12 * dp));
-        Button stop = button("Stop", Color.TRANSPARENT, t.title);
+        Button stop = button("Stop", Color.TRANSPARENT, ink);
         stop.setOnClickListener(v -> { AlarmService s = AlarmService.current(); if (s != null) s.stopAll(); finish(); });
         root.addView(stop, lp(12 * dp));
         setContentView(root);
@@ -95,8 +99,14 @@ public class AlarmActivity extends Activity {
     void refresh() {
         AlarmService s = AlarmService.current();
         if (s == null) { finish(); return; }
-        titleView.setText(s.title);
-        bodyView.setText(s.body);
+        String name = ReminderScheduler.noTime(s.title).trim();   // the time is already shown big: no "Alarm · 7:00 AM" under it
+        if (name.equalsIgnoreCase("alarm")) name = "";
+        titleView.setText(name);
+        titleView.setVisibility(name.isEmpty() ? android.view.View.GONE : android.view.View.VISIBLE);
+        String msg = s.body == null ? "" : s.body.trim();
+        if (msg.equalsIgnoreCase("Your alarm.") || msg.equalsIgnoreCase("Your alarm") || "alarm-wake".equals(s.key)) msg = "";   // the Day Plan alarm shows only the time
+        bodyView.setText(msg);
+        bodyView.setVisibility(msg.isEmpty() ? android.view.View.GONE : android.view.View.VISIBLE);
         if (s.canSnooze()) { snoozeBtn.setText("Snooze " + s.snoozeMin() + " min"); snoozeBtn.setVisibility(android.view.View.VISIBLE); }
         else snoozeBtn.setVisibility(android.view.View.GONE);
         doneBtn.setVisibility(s.key.startsWith("routine-") ? android.view.View.VISIBLE : android.view.View.GONE);

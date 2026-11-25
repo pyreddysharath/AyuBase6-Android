@@ -54,10 +54,21 @@ public class ReminderAlarmTest {
     @Test
     public void vibrateFlagTravels() throws Exception {
         String r = "{\"alarms\":[{\"id\":\"rem\",\"at\":420,\"section\":\"alerts\",\"title\":\"A\",\"body\":\"x\",\"vibrate\":false},"
-            + "{\"id\":\"wake\",\"at\":420,\"title\":\"B\",\"body\":\"y\"}]}";
+            + "{\"id\":\"wake\",\"at\":421,\"title\":\"B\",\"body\":\"y\"}]}";
+        assertEquals(false, at(r, 420, 2).get(0).vibrate);
+        assertEquals(true, at(r, 421, 2).get(0).vibrate);
+    }
+
+    @Test
+    public void dayPlanAlarmWinsTheSameMinute() throws Exception {
+        String r = "{\"alarms\":[{\"id\":\"rem\",\"at\":420,\"section\":\"alerts\",\"title\":\"A\",\"body\":\"x\"},"
+            + "{\"id\":\"remabcdefgh\",\"at\":420,\"section\":\"alerts\",\"title\":\"G\",\"body\":\"y\"},"
+            + "{\"id\":\"remzzzzzzzz\",\"at\":421,\"section\":\"alerts\",\"title\":\"Z\",\"body\":\"z\"},"
+            + "{\"id\":\"wake\",\"at\":420,\"title\":\"B\",\"body\":\"w\"}]}";
         List<ReminderRules.Due> d = at(r, 420, 2);
-        assertEquals(false, d.get(0).vibrate);
-        assertEquals(true, d.get(1).vibrate);
+        assertEquals(1, d.size());   // the Reminders alarms at the same minute stay silent
+        assertEquals("alarm-wake", d.get(0).key);
+        assertEquals("alarm-remzzzzzzzz", at(r, 421, 2).get(0).key);   // another minute: rings as usual
     }
 
     @Test
