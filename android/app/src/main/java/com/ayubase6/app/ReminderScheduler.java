@@ -459,7 +459,9 @@ final class ReminderScheduler {
             .setSilent(silent)
             .setCategory(silent ? NotificationCompat.CATEGORY_PROGRESS : NotificationCompat.CATEGORY_REMINDER)
             .setPriority(silent ? NotificationCompat.PRIORITY_LOW : NotificationCompat.PRIORITY_HIGH)
-            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC);
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setGroup(groupKey(theme))   // one stack per section, so Care and Reminders do not merge
+            .setGroupAlertBehavior(NotificationCompat.GROUP_ALERT_CHILDREN);
         if (!silent && !vibrate) b.setVibrate(new long[]{0});   // Android 7 and older
         boolean checks = tapKey != null && (tapKey.startsWith("routine-") || tapKey.startsWith("alarm-"));
         if (checks) { b.setShowWhen(false); b.setContentTitle(noTime(title)); }   // the time is not repeated on the notification
@@ -512,6 +514,7 @@ final class ReminderScheduler {
         }
         try {
             nm.notify(idFor(tag), b.build());
+            postSummary(c, theme);
         } catch (SecurityException e) {
             Log.w(TAG, "notification permission missing");
         } catch (Throwable t) {
@@ -744,7 +747,38 @@ final class ReminderScheduler {
         saveSnoozes(c, keep);
     }
 
-    static void cancel(Context c, String tag) { NotificationManagerCompat.from(c).cancel(idFor(tag)); }
+    static void cancel(Context c, String tag) { NotificationManagerCompat.from(c).cancel(idFor(tag)); dropEmptySummaries(c); }
+
+    // ── One stack per section: Care (sky blue), Reminders (lime), Mind ──
+    private static String groupKey(NotificationArt.Theme t) { return t == NotificationArt.ROUTINES ? "ayu-care" : t == NotificationArt.MIND ? "ayu-mind" : "ayu-reminders"; }
+    private static int summaryId(String g) { return "ayu-care".equals(g) ? 9101 : "ayu-mind".equals(g) ? 9102 : 9103; }
+    private static String groupName(String g) { return "ayu-care".equals(g) ? "Care" : "ayu-mind".equals(g) ? "Mind" : "Reminders"; }
+    /** The quiet header of a section's stack: the section colour and name. Android keeps it only while the stack has notifications. */
+    private static void postSummary(Context c, NotificationArt.Theme theme) {
+        try {
+            String g = groupKey(theme);
+            android.app.Notification n = new NotificationCompat.Builder(c, CHANNEL_UPDATES)
+                .setSmallIcon(smallIcon(c)).setContentTitle(groupName(g)).setContentText(groupName(g))
+                .setColor(NotificationArt.accentColor(c, theme))
+                .setGroup(g).setGroupSummary(true).setGroupAlertBehavior(NotificationCompat.GROUP_ALERT_CHILDREN)
+                .setSilent(true).setOnlyAlertOnce(true).setAutoCancel(true).build();
+            NotificationManagerCompat.from(c).notify(summaryId(g), n);
+        } catch (SecurityException | RuntimeException ignored) { }
+    }
+    /** Takes a section's header away when none of its notifications is left. */
+    static void dropEmptySummaries(Context c) {
+        try {
+            android.app.NotificationManager nm = (android.app.NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
+            if (nm == null || android.os.Build.VERSION.SDK_INT < 23) return;
+            java.util.Set<String> live = new java.util.HashSet<>();
+            for (android.service.notification.StatusBarNotification sb : nm.getActiveNotifications()) {
+                if (sb.getId() >= 9101 && sb.getId() <= 9103) continue;
+                String g = sb.getNotification().getGroup();
+                if (g != null) live.add(g);
+            }
+            for (String g : new String[]{"ayu-care", "ayu-mind", "ayu-reminders"}) if (!live.contains(g)) nm.cancel(summaryId(g));
+        } catch (RuntimeException ignored) { }
+    }
 
     // ── Eyes (20-20-20): when the 20 seconds are over the same notification says so, quietly ──
     static final String A_EYES_DONE = "com.ayubase6.app.EYES_DONE", A_EYES_START = "eyes-start";
