@@ -56,6 +56,18 @@ public class AyuRemindersPlugin extends Plugin {
     @PluginMethod
     public void bootReady(PluginCall call) { MainActivity.bootReady = true; call.resolve(); }
 
+    /** The colour of the strip behind the clock and signal icons: the section colour, sent by the page when the section changes. */
+    @PluginMethod
+    public void setBarColor(final PluginCall call) {
+        try {
+            final int col = android.graphics.Color.parseColor(call.getString("color", "#F6F8FB"));
+            MainActivity.barColor = col;
+            final android.app.Activity a = getActivity();
+            if (a != null) a.runOnUiThread(new Runnable() { @Override public void run() { MainActivity.applyBarColor(a); } });
+        } catch (Throwable ignored) {}
+        call.resolve();
+    }
+
     @PluginMethod
     public void clockSet(PluginCall call) {
         android.content.Context c = getContext();

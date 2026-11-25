@@ -8,6 +8,12 @@ public class MainActivity extends BridgeActivity {
     // Start screen (logo + name + "Life Basics") stays over the page until the page has drawn its first screen
     // (the page tells us through the plugin), or 8 s at most, so there is no white screen.
     static volatile boolean bootReady = false;
+    // The status-bar strip at the top is reserved by the app itself, from the very first frame (it never moves or fills in later), and painted in the section colour
+    // (the page tells us the colour through the plugin). The bottom stays full screen under the gesture bar.
+    static volatile int barColor = 0xFFF6F8FB;
+    static void applyBarColor(android.app.Activity a) {
+        try { android.view.View v = a.findViewById(android.R.id.content); if (v != null) v.setBackgroundColor(barColor); } catch (Throwable ignored) {}
+    }
 
     private void showStartScreen() {
         try {
@@ -101,6 +107,19 @@ public class MainActivity extends BridgeActivity {
             if (android.os.Build.VERSION.SDK_INT >= 28) getWindow().getAttributes().layoutInDisplayCutoutMode = android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
         } catch (Throwable ignored) {}
         super.onCreate(savedInstanceState);
+        try {
+            final android.view.View content = findViewById(android.R.id.content);
+            content.setBackgroundColor(barColor);
+            androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(content, (v, insets) -> {
+                androidx.core.graphics.Insets sb = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.statusBars() | androidx.core.view.WindowInsetsCompat.Type.displayCutout());
+                v.setPadding(0, sb.top, 0, 0);
+                // The page is told there is no top bar to avoid (the strip above it is already taken), so the top is the same from the first frame
+                return new androidx.core.view.WindowInsetsCompat.Builder(insets)
+                    .setInsets(androidx.core.view.WindowInsetsCompat.Type.statusBars(), androidx.core.graphics.Insets.NONE)
+                    .setInsets(androidx.core.view.WindowInsetsCompat.Type.displayCutout(), androidx.core.graphics.Insets.NONE).build();
+            });
+            androidx.core.view.ViewCompat.requestApplyInsets(content);
+        } catch (Throwable ignored) {}
         showStartScreen();
         StartTips.refresh(this);
         // Text at the same size as the website: the phone's font-size setting does not enlarge the app's text.
