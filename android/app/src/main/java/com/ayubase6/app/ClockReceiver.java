@@ -44,7 +44,7 @@ public class ClockReceiver extends BroadcastReceiver {
             long len = ClockKit.len(t);
             boolean more = "running".equals(ClockKit.run(t));
             int sec = more ? (int) Math.max(5, Math.min(30, len / 3000)) : 60;
-            JSONObject cfg = new JSONObject().put("tone", t.optString("tone", "rise")).put("vibrate", t.optBoolean("vibrate", true))
+            JSONObject cfg = new JSONObject().put("tone", t.optString("tone", "rise")).put("vibrate", t.optBoolean("vibrate", false))
                 .put("ringSec", sec).put("snoozeMax", 0).put("section", "alerts").put("keys", "stop");
             String body = "Time's up" + (more ? " · next alert in " + ClockKit.hms(len) + " (" + ClockNotifier.roundText(t) + ")" : "");
             AlarmService.startWith(c, "timer", ClockNotifier.timerTitle(t).replace("⏱ ", ""), body, cfg);

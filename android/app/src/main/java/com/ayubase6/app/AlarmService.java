@@ -346,7 +346,7 @@ public class AlarmService extends Service {
     }
 
     private void startVibration() {
-        if (cfg != null && !cfg.optBoolean("vibrate", true)) return;   // Vibrate switch off for this alarm
+        if (cfg != null && !cfg.optBoolean("vibrate", false)) return;   // Vibrate switch off for this alarm
         try {
             vibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);
             long[] pattern = {0, 700, 700};

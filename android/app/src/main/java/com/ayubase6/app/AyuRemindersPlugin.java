@@ -299,7 +299,7 @@ public class AyuRemindersPlugin extends Plugin {
         if (like != null && !like.isEmpty()) {   // Preview notification: the real buttons of that reminder; tapping one only closes the preview
             ReminderScheduler.show(getContext(), key, call.getString("title", "AyuBase6"), call.getString("body", ""),
                 false, theme, call.getString("section", ""), "preview:" + like, ReminderScheduler.actionsFor(like), false);   // no channel vibration: the preview vibrates itself below
-            if (!Boolean.FALSE.equals(call.getBoolean("vibrate", true))) previewVibrate();   // only when that reminder's Vibrate switch is on
+            if (Boolean.TRUE.equals(call.getBoolean("vibrate", false))) previewVibrate();   // only when that reminder's Vibrate switch is on
         } else {
             ReminderScheduler.show(getContext(), key, call.getString("title", "AyuBase6"), call.getString("body", ""),
                 Boolean.TRUE.equals(call.getBoolean("silent", false)), theme, call.getString("section", ""), call.getString("tapKey", ""));

@@ -18,7 +18,7 @@ final class ReminderRules {
 
     static final class Due {
         final String key, title, body, section;
-        boolean vibrate = true;   // Vibrate switch in the app (Checks, Health Breaks, each Personal Reminder); missing means on
+        boolean vibrate = false;   // Vibrate switch in the app (Checks, Health Breaks, each Personal Reminder); missing means off
         Due(String key, String title, String body, String section) {
             this.key = key; this.title = title; this.body = body; this.section = section;
         }
@@ -26,7 +26,7 @@ final class ReminderRules {
         String say = "", voice = "", lang = "";   // Speak: what to read out (empty = nothing), the voice and its language
         Due vib(JSONObject o) {
             if (o != null) {
-                vibrate = o.optBoolean("vibrate", true); String t = o.optString("sound", ""); sound = t.matches("^[a-z]{1,12}$|^content://[^\\s\"]{1,300}$") ? t : "";
+                vibrate = o.optBoolean("vibrate", false); String t = o.optString("sound", ""); sound = t.matches("^[a-z]{1,12}$|^content://[^\\s\"]{1,300}$") ? t : "";
                 JSONObject sp = o.optJSONObject("speak");
                 if (sp != null && sp.optBoolean("on", false)) {
                     String tx = sp.optString("text", "").trim();
