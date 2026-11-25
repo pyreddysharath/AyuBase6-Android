@@ -27,7 +27,7 @@ final class NotificationArt {
     }
 
     // Same values as NUDGE_THEMES in the web app.
-    static final Theme REMINDERS = new Theme(c("#f8faf3"), c("#eaf2d5"), c("#bee068"), c("#799e1b"), c("#8db529"), c("#73961b"));
+    static final Theme REMINDERS = new Theme(c("#f8faf3"), c("#eaf2d5"), c("#bccf8f"), c("#7a9546"), c("#8ea85a"), c("#6f8a3a"));
     static final Theme ROUTINES = new Theme(c("#f2fafe"), c("#d8eff9"), c("#a6d9ee"), c("#41aad4"), c("#41aad4"), c("#3c85a2"));   // Care: sky blue
 
     static final Theme MIND = new Theme(c("#f1f4ff"), c("#dfe5ff"), c("#b4d0ed"), c("#35489b"), c("#35489b"), c("#2f45a2"));   // Mind: indigo-blue
