@@ -98,6 +98,7 @@ public class MainActivity extends BridgeActivity {
             androidx.core.view.WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
             getWindow().setStatusBarColor(android.graphics.Color.TRANSPARENT);
             getWindow().setNavigationBarColor(android.graphics.Color.TRANSPARENT);
+            if (android.os.Build.VERSION.SDK_INT >= 28) getWindow().getAttributes().layoutInDisplayCutoutMode = android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
         } catch (Throwable ignored) {}
         super.onCreate(savedInstanceState);
         showStartScreen();
