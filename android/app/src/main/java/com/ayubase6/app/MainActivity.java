@@ -6,7 +6,7 @@ import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
     // Start screen (logo + name + "Life Basics") stays over the page until the page has drawn its first screen
-    // (the page tells us through the plugin), or 4 s at most, so there is no white screen.
+    // (the page tells us through the plugin), or 8 s at most, so there is no white screen.
     static volatile boolean bootReady = false;
 
     private void showStartScreen() {
@@ -17,13 +17,25 @@ public class MainActivity extends BridgeActivity {
             iv.setImageResource(R.drawable.splash_brand);
             iv.setAdjustViewBounds(true);
             iv.setScaleType(android.widget.ImageView.ScaleType.FIT_CENTER);
+            // A soft breathing pulse while the app loads (no progress implied)
+            try {
+                android.animation.ObjectAnimator pulse = android.animation.ObjectAnimator.ofPropertyValuesHolder(iv,
+                    android.animation.PropertyValuesHolder.ofFloat(android.view.View.SCALE_X, 1f, 1.04f),
+                    android.animation.PropertyValuesHolder.ofFloat(android.view.View.SCALE_Y, 1f, 1.04f),
+                    android.animation.PropertyValuesHolder.ofFloat(android.view.View.ALPHA, 1f, 0.82f));
+                pulse.setDuration(750); pulse.setRepeatCount(android.animation.ValueAnimator.INFINITE); pulse.setRepeatMode(android.animation.ValueAnimator.REVERSE);
+                pulse.setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator());
+                pulse.start();
+                iv.setTag(pulse);
+            } catch (Throwable ignored) {}
             int w = (int) (getResources().getDisplayMetrics().widthPixels * 0.78f);
             ov.addView(iv, new android.widget.FrameLayout.LayoutParams(w, android.view.ViewGroup.LayoutParams.WRAP_CONTENT, android.view.Gravity.CENTER));
             addContentView(ov, new android.view.ViewGroup.LayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT, android.view.ViewGroup.LayoutParams.MATCH_PARENT));
             final long t0 = android.os.SystemClock.uptimeMillis();
             final android.os.Handler h = new android.os.Handler(android.os.Looper.getMainLooper());
             h.post(new Runnable() { @Override public void run() {
-                if (bootReady || android.os.SystemClock.uptimeMillis() - t0 > 4000) {
+                if (bootReady || android.os.SystemClock.uptimeMillis() - t0 > 8000) {
+                    try { Object pa = iv.getTag(); if (pa instanceof android.animation.Animator) ((android.animation.Animator) pa).cancel(); } catch (Throwable ignored) {}
                     ov.animate().alpha(0f).setDuration(250).withEndAction(() -> {
                         try { ((android.view.ViewGroup) ov.getParent()).removeView(ov); } catch (Throwable ignored) {}
                     }).start();
