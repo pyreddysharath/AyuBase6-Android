@@ -54,9 +54,11 @@ public class ReminderAlarmTest {
     @Test
     public void vibrateFlagTravels() throws Exception {
         String r = "{\"alarms\":[{\"id\":\"rem\",\"at\":420,\"section\":\"alerts\",\"title\":\"A\",\"body\":\"x\",\"vibrate\":false},"
-            + "{\"id\":\"wake\",\"at\":421,\"title\":\"B\",\"body\":\"y\"}]}";
+            + "{\"id\":\"wake\",\"at\":421,\"title\":\"B\",\"body\":\"y\"},"
+            + "{\"id\":\"remvibon0000\",\"at\":422,\"section\":\"alerts\",\"title\":\"C\",\"body\":\"z\",\"vibrate\":true}]}";
         assertEquals(false, at(r, 420, 2).get(0).vibrate);
-        assertEquals(true, at(r, 421, 2).get(0).vibrate);
+        assertEquals(false, at(r, 421, 2).get(0).vibrate);   // vibrate is off unless the flag says on
+        assertEquals(true, at(r, 422, 2).get(0).vibrate);
     }
 
     @Test
