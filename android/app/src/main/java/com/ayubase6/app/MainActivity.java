@@ -11,22 +11,38 @@ public class MainActivity extends BridgeActivity {
 
     private void showStartScreen() {
         try {
-            final android.widget.FrameLayout ov = new android.widget.FrameLayout(this);
+            // Everything is placed from the start screen's own real size (as fractions of its width and height), so nothing changes size or moves if the window settles (system bars, density) while it is showing
+            final android.view.View[] kids = new android.view.View[4];   // 0 green, 1 blue, 2 logo, 3 tip
+            final android.widget.FrameLayout ov = new android.widget.FrameLayout(this) {
+                @Override protected void onMeasure(int ws, int hs) {
+                    int W = android.view.View.MeasureSpec.getSize(ws), H = android.view.View.MeasureSpec.getSize(hs);
+                    setMeasuredDimension(W, H);
+                    int cs = Math.round(150f * W / 180f), lw = Math.round(.78f * W);
+                    int ex = android.view.View.MeasureSpec.EXACTLY;
+                    if (kids[0] != null) kids[0].measure(android.view.View.MeasureSpec.makeMeasureSpec(cs, ex), android.view.View.MeasureSpec.makeMeasureSpec(cs, ex));
+                    if (kids[1] != null) kids[1].measure(android.view.View.MeasureSpec.makeMeasureSpec(cs, ex), android.view.View.MeasureSpec.makeMeasureSpec(cs, ex));
+                    if (kids[2] != null) kids[2].measure(android.view.View.MeasureSpec.makeMeasureSpec(lw, ex), android.view.View.MeasureSpec.makeMeasureSpec(Math.round(lw * 900f / 1020f), ex));
+                    if (kids[3] != null) kids[3].measure(android.view.View.MeasureSpec.makeMeasureSpec(W, ex), android.view.View.MeasureSpec.makeMeasureSpec(H, android.view.View.MeasureSpec.AT_MOST));
+                }
+                @Override protected void onLayout(boolean ch, int l, int t, int r, int b) {
+                    int W = r - l, H = b - t, cs = Math.round(150f * W / 180f), o1 = Math.round(55f * W / 180f), o2 = Math.round(60f * W / 180f);
+                    int lw = Math.round(.78f * W), lh = Math.round(lw * 900f / 1020f), lt = (H - lh) / 2;
+                    if (kids[0] != null) kids[0].layout(-o1, -o2, -o1 + cs, -o2 + cs);
+                    if (kids[1] != null) kids[1].layout(W + o1 - cs, H + o2 - cs, W + o1, H + o2);
+                    if (kids[2] != null) kids[2].layout((W - lw) / 2, lt, (W - lw) / 2 + lw, lt + lh);
+                    if (kids[3] != null) { int tt = lt + Math.round(lh * 0.74f); kids[3].layout(0, tt, W, tt + kids[3].getMeasuredHeight()); }
+                }
+            };
             ov.setBackgroundColor(0xFFF6F8FB);   // the app's page colour, as the start screen before it
             // Two soft corner shapes in the logo's colours: green top-left, blue bottom-right (one big circle each; the earlier version with a smaller second circle is commit 37231e4)
-            final float sc = getResources().getDisplayMetrics().widthPixels / 180f;
-            final int[][] sh = { {0xFFA9D58C, 150, -55, -60, 0, 230}, {0xFF93BFE8, 150, -55, -60, 1, 217} };
-            for (int[] d : sh) {
+            final int[][] sh = { {0xFFA9D58C, 230}, {0xFF93BFE8, 217} };
+            for (int k = 0; k < 2; k++) {
+                int[] d = sh[k];
                 android.view.View v = new android.view.View(this);
                 android.graphics.drawable.GradientDrawable g = new android.graphics.drawable.GradientDrawable();
                 g.setShape(android.graphics.drawable.GradientDrawable.OVAL); g.setColor(d[0]);
-                v.setBackground(g); v.setAlpha(d[5] / 255f);
-                int size = Math.round(d[1] * sc);
-                android.widget.FrameLayout.LayoutParams lp = new android.widget.FrameLayout.LayoutParams(size, size,
-                    d[4] == 0 ? (android.view.Gravity.TOP | android.view.Gravity.START) : (android.view.Gravity.BOTTOM | android.view.Gravity.END));
-                if (d[4] == 0) { lp.leftMargin = Math.round(d[2] * sc); lp.topMargin = Math.round(d[3] * sc); }
-                else { lp.rightMargin = Math.round(d[2] * sc); lp.bottomMargin = Math.round(d[3] * sc); }
-                ov.addView(v, lp);
+                v.setBackground(g); v.setAlpha(d[1] / 255f);
+                kids[k] = v; ov.addView(v);
             }
             android.widget.ImageView iv = new android.widget.ImageView(this);
             iv.setImageResource(R.drawable.splash_brand);
@@ -43,8 +59,7 @@ public class MainActivity extends BridgeActivity {
                 pulse.start();
                 iv.setTag(pulse);
             } catch (Throwable ignored) {}
-            int w = (int) (getResources().getDisplayMetrics().widthPixels * 0.78f);
-            ov.addView(iv, new android.widget.FrameLayout.LayoutParams(w, android.view.ViewGroup.LayoutParams.WRAP_CONTENT, android.view.Gravity.CENTER));
+            kids[2] = iv; ov.addView(iv);
             // One short tip under the logo (from the kept copy; nothing when there is none)
             final String tip = StartTips.pick(this);
             if (tip != null) {
@@ -53,11 +68,7 @@ public class MainActivity extends BridgeActivity {
                 tv.setTypeface(null, android.graphics.Typeface.ITALIC);
                 int pad = Math.round(28 * getResources().getDisplayMetrics().density);
                 tv.setPadding(pad, 0, pad, 0);
-                int H = getResources().getDisplayMetrics().heightPixels;
-                int imgH = Math.round(w * 900f / 1020f);
-                android.widget.FrameLayout.LayoutParams tl = new android.widget.FrameLayout.LayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT, android.view.ViewGroup.LayoutParams.WRAP_CONTENT, android.view.Gravity.TOP);
-                tl.topMargin = (H - imgH) / 2 + Math.round(imgH * 0.74f);
-                ov.addView(tv, tl);
+                kids[3] = tv; ov.addView(tv);
             }
             final long minShow = tip != null ? 1500 : 0;
             addContentView(ov, new android.view.ViewGroup.LayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT, android.view.ViewGroup.LayoutParams.MATCH_PARENT));
