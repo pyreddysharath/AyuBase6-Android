@@ -784,22 +784,23 @@ final class ReminderScheduler {
     static final String A_EYES_DONE = "com.ayubase6.app.EYES_DONE", A_EYES_START = "eyes-start";
     /** Start was tapped: the same notification now counts the 20 seconds down, quietly, then says they are done. */
     static void eyesStart(Context c, String tag, String title) {
+        final long startedAt = System.currentTimeMillis();   // the countdown starts now; the "done" alarm is counted from here, not from after the notification is drawn
         ensureChannels(c);
         if (!NotificationManagerCompat.from(c).areNotificationsEnabled()) return;
         NotificationArt.Theme theme = NotificationArt.ROUTINES;   // Eyes belongs to Care
         // The same notification as before (title, text, the bell) with the countdown where Start was
-        show(c, tag, title == null || title.isEmpty() ? "Eyes" : title, "Look 20 feet away until the time runs out.", true, theme, "alerts", "break",
+        show(c, tag, title == null || title.isEmpty() ? "Eyes (20-20-20)" : title, "Look 20 feet away until the time runs out.", true, theme, "alerts", "break",
             new String[]{A_OFF_THIS}, false, "", 20000L);
-        eyesDone(c, tag, title, theme, "alerts");
+        eyesDone(c, tag, title, theme, "alerts", startedAt);
     }
-    private static void eyesDone(Context c, String tag, String title, NotificationArt.Theme theme, String section) {
+    private static void eyesDone(Context c, String tag, String title, NotificationArt.Theme theme, String section, long startedAt) {
         try {
             AlarmManager am = (AlarmManager) c.getSystemService(Context.ALARM_SERVICE);
             if (am == null) return;
             Intent i = new Intent(c, ActionReceiver.class).setAction(A_EYES_DONE)
                 .putExtra(ActionReceiver.EXTRA_TAG, tag).putExtra(ActionReceiver.EXTRA_TITLE, title).putExtra(EXTRA_SECTION, section == null ? "" : section);
             PendingIntent pi = PendingIntent.getBroadcast(c, 7050, i, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-            long at = System.currentTimeMillis() + 19800L;   // just before the countdown reaches 0, so it never shows -1
+            long at = startedAt + 18700L;   // about a second before the countdown reaches 0 (the phone takes a moment to redraw), so it never shows -1
             if (canExact(c)) am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi); else am.set(AlarmManager.RTC_WAKEUP, at, pi);
         } catch (Exception ignored) {}
     }
