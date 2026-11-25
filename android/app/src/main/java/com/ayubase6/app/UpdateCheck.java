@@ -88,7 +88,7 @@ public class UpdateCheck extends BroadcastReceiver {
         if (AnnouncementCheck.appVisible) return;   // the app shows its own card while it is open
         // At every check (every 2 hours, 10 AM to 8 PM) until the update is installed: it pops up on the screen (sound, no vibration)
         ReminderScheduler.show(c, TAG, "A new version of AyuBase6 is ready", "Tap to download.",
-            false, NotificationArt.REMINDERS, "update", TAG, new String[0], false, "");
+            false, NotificationArt.LOGO, "update", TAG, new String[0], false, "");   // logo colours (blue title, white card)
     }
 
     static long myVersion(Context c) {
