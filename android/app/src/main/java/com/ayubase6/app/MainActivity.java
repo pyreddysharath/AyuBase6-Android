@@ -86,7 +86,9 @@ public class MainActivity extends BridgeActivity {
                 long el = android.os.SystemClock.uptimeMillis() - t0;
                 if ((bootReady && el >= minShow) || el > 8000) {
                     try { Object pa = iv.getTag(); if (pa instanceof android.animation.Animator) ((android.animation.Animator) pa).cancel(); } catch (Throwable ignored) {}
-                    ov.animate().alpha(0f).setDuration(700).setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator()).withEndAction(() -> {
+                    // Two steps so the logo never shows over the app: the logo, tip and corner shapes fade out first, then the plain page-coloured background fades to the app
+                    for (android.view.View kv : kids) if (kv != null) kv.animate().alpha(0f).setDuration(320).setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator()).start();
+                    ov.animate().alpha(0f).setStartDelay(300).setDuration(450).setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator()).withEndAction(() -> {
                         try { ((android.view.ViewGroup) ov.getParent()).removeView(ov); } catch (Throwable ignored) {}
                     }).start();
                 } else h.postDelayed(this, 40);
