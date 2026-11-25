@@ -548,7 +548,7 @@ final class ReminderScheduler {
         if (!own && !pic && tag != null && tag.endsWith("test")) b.setLargeIcon((android.graphics.Bitmap) null);   // the test notification: no big logo, as in the newer notifications
         for (java.util.Map.Entry<String, PendingIntent> e : acts.entrySet()) {
             if (own && (A_OFF_THIS.equals(e.getKey()) || A_EYES_START.equals(e.getKey()) || A_DONE.equals(e.getKey()) || A_NOT_YET.equals(e.getKey()))) continue;   // already in the app's own drawing
-            b.addAction(new NotificationCompat.Action.Builder(0, A_DONE.equals(e.getKey()) ? tinted(c, theme, actionLabel(e.getKey())) : actionLabel(e.getKey()), e.getValue()).setAuthenticationRequired(false).build());   // works from the lock screen without unlocking
+            b.addAction(new NotificationCompat.Action.Builder(0, tinted(c, theme, actionLabel(e.getKey())), e.getValue()).setAuthenticationRequired(false).build());   // works from the lock screen without unlocking
         }
         try {
             nm.notify(idFor(tag), b.build());
