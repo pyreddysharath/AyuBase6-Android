@@ -15,7 +15,7 @@ public class MainActivity extends BridgeActivity {
             ov.setBackgroundColor(0xFFF6F8FB);   // the app's page colour, as the start screen before it
             // Two soft corner shapes in the logo's colours: green top-left, blue bottom-right (one big circle each; the earlier version with a smaller second circle is commit 37231e4)
             final float sc = getResources().getDisplayMetrics().widthPixels / 180f;
-            final int[][] sh = { {0xFFCFE6BF, 150, -55, -60, 0, 230}, {0xFFBCD6EF, 150, -55, -60, 1, 217} };
+            final int[][] sh = { {0xFFA9D58C, 150, -55, -60, 0, 230}, {0xFF93BFE8, 150, -55, -60, 1, 217} };
             for (int[] d : sh) {
                 android.view.View v = new android.view.View(this);
                 android.graphics.drawable.GradientDrawable g = new android.graphics.drawable.GradientDrawable();
