@@ -201,16 +201,10 @@ public class AlarmService extends Service {
         if (ringSec > 0) { autoStop = this::missed; main.postDelayed(autoStop, ringSec * 1000L); }
         else if (ringMin > 0) { autoStop = this::missed; main.postDelayed(autoStop, ringMin * 60000L); }
         AlarmActivity a = screen.get();
-        if (a != null) a.refresh(); else openScreen();
+        if (a != null) a.refresh();
         return START_NOT_STICKY;
     }
 
-    /** Opens the alarm screen straight away, also while the phone is in use (otherwise Android shows only a pop-up card).
-     *  Needs "Display over other apps"; without it Android may refuse, and the notification with Snooze / Stop remains. */
-    private void openScreen() {
-        try { startActivity(new Intent(this, AlarmActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_NO_USER_ACTION)); }
-        catch (Exception e) { Log.w(ReminderScheduler.TAG, "alarm screen not opened", e); }
-    }
 
     private static String str(String s) { return s == null ? "" : s; }
 
