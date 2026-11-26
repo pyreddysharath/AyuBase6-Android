@@ -395,11 +395,27 @@ public class AlarmService extends Service {
             .setAutoCancel(false)
             .setContentIntent(full)
             .setDeleteIntent(action("stop", 7314));   // swiped away (Android 14+ allows it): stop the sound too
-        ReminderScheduler.sectionTitle(this, b, theme(), ReminderScheduler.noTime(title), shownBody());
+        boolean routine = key.startsWith("routine-");
+        boolean custom = false;
+        try {   // Snooze / Stop drawn by the app as coloured pills (Android draws its own action buttons grey)
+            android.widget.RemoteViews v = new android.widget.RemoteViews(getPackageName(), R.layout.notif_alarm);
+            v.setTextViewText(R.id.na_title, ReminderScheduler.noTime(title));
+            v.setTextColor(R.id.na_title, NotificationArt.titleColor(this, theme()));
+            v.setTextViewText(R.id.na_text, shownBody());
+            if (canSnooze()) { v.setTextViewText(R.id.na_snooze, "Snooze " + snoozeMin() + " min"); v.setOnClickPendingIntent(R.id.na_snooze, action("snooze", 7311)); }
+            else v.setViewVisibility(R.id.na_snooze, android.view.View.GONE);
+            v.setOnClickPendingIntent(R.id.na_stop, action("stop", 7312));
+            if (routine) { v.setViewVisibility(R.id.na_done, android.view.View.VISIBLE); v.setOnClickPendingIntent(R.id.na_done, action("done", 7313)); }
+            b.setStyle(new NotificationCompat.DecoratedCustomViewStyle()).setCustomContentView(v).setCustomBigContentView(v).setCustomHeadsUpContentView(v);
+            custom = true;
+        } catch (Exception e) { /* fall back to the standard buttons */ }
+        if (!custom) {
+            ReminderScheduler.sectionTitle(this, b, theme(), ReminderScheduler.noTime(title), shownBody());
+            if (canSnooze()) b.addAction(0, "Snooze " + snoozeMin() + " min", action("snooze", 7311));
+            b.addAction(0, "Stop", action("stop", 7312));
+            if (routine) b.addAction(0, ReminderScheduler.tinted(this, theme(), "✓ Done"), action("done", 7313));
+        }
         if (!preview) b.setFullScreenIntent(full, true);
-        if (canSnooze()) b.addAction(0, "Snooze " + snoozeMin() + " min", action("snooze", 7311));
-        b.addAction(0, "Stop", action("stop", 7312));
-        if (key.startsWith("routine-")) b.addAction(0, ReminderScheduler.tinted(this, theme(), "✓ Done"), action("done", 7313));
         return b.build();
     }
 
