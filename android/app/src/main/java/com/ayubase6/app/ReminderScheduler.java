@@ -127,6 +127,9 @@ final class ReminderScheduler {
 
     // ── A quiet note two hours before an alarm rings ("Alarm at 6:30 AM"), also on the lock screen ──
     static final String UPCOMING_TAG = "alarm-upcoming";
+    static final String A_UP_DISMISS = "upcoming-dismiss", PREF_UP_DISMISSED = "upDismissed", EXTRA_RING_MS = "ayu_ring_ms";
+    /** "Dismiss" on the note before an alarm: the note goes away for this ring; the alarm still rings. */
+    static void dismissUpcoming(Context c, long ringMs) { prefs(c).edit().putLong(PREF_UP_DISMISSED, ringMs).apply(); cancel(c, UPCOMING_TAG); }
     private static final long UPCOMING_MS = 2 * 60 * 60000L;
     private static void upcoming(Context c, AlarmManager am, JSONObject rules, long now) {
         Intent wi = new Intent(c, AlarmReceiver.class).setAction("com.ayubase6.app.UPCOMING");
@@ -139,6 +142,7 @@ final class ReminderScheduler {
         }
         if (ring == 0) { cancel(c, UPCOMING_TAG); return; }
         long ms = ring * 60000L, left = ms - System.currentTimeMillis();
+        if (prefs(c).getLong(PREF_UP_DISMISSED, 0) == ms) { cancel(c, UPCOMING_TAG); return; }   // "Dismiss" was tapped for this ring
         if (left > UPCOMING_MS) {   // not yet: come back two hours before it
             cancel(c, UPCOMING_TAG);
             try { am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, ms - UPCOMING_MS, wake); } catch (Exception ignored) {}
@@ -153,18 +157,22 @@ final class ReminderScheduler {
             .putExtra(EXTRA_KEY, key).putExtra(EXTRA_SECTION, sec);
         PendingIntent pi = PendingIntent.getActivity(c, idFor(UPCOMING_TAG), open, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         String when = java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).format(new java.util.Date(ms));
-        String name = noTime(title);
+        String name = noTime(title), label = "Alarm".equals(name) || name.isEmpty() ? "" : name;   // the title says it all; only a named alarm gets a second line
+        Intent dis = new Intent(c, ActionReceiver.class).setAction("com.ayubase6.app.ACTION." + A_UP_DISMISS)
+            .putExtra(ActionReceiver.EXTRA_ACTION, A_UP_DISMISS).putExtra(ActionReceiver.EXTRA_TAG, UPCOMING_TAG).putExtra(EXTRA_RING_MS, ms);
+        PendingIntent disPi = PendingIntent.getBroadcast(c, idFor(UPCOMING_TAG) + 7, dis, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         NotificationCompat.Builder b = new NotificationCompat.Builder(c, CHANNEL_UPDATES)
             .setSmallIcon(smallIcon(c))
             .setContentTitle("Alarm at " + when)
-            .setContentText("Alarm".equals(name) || name.isEmpty() ? "Upcoming alarm" : name)
+            .setContentText(label.isEmpty() ? null : label)
             .setLargeIcon(art("alarm" + theme.key(), () -> NotificationArt.alarm(theme)))   // an alarm clock in the section's colour
             .setColor(NotificationArt.accentColor(c, theme)).setContentIntent(pi)
             .setOngoing(true).setAutoCancel(false).setOnlyAlertOnce(true).setSilent(true)
             .setUsesChronometer(true).setChronometerCountDown(true).setWhen(ms).setShowWhen(true)
             .setCategory(NotificationCompat.CATEGORY_ALARM).setPriority(NotificationCompat.PRIORITY_LOW)
-            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC);
-        sectionTitle(c, b, theme, "Alarm at " + when, "Alarm".equals(name) || name.isEmpty() ? "Upcoming alarm" : name);
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .addAction(new NotificationCompat.Action.Builder(0, tinted(c, theme, "Dismiss"), disPi).setAuthenticationRequired(false).build());
+        sectionTitle(c, b, theme, "Alarm at " + when, label);
         try { nm.notify(idFor(UPCOMING_TAG), b.build()); } catch (SecurityException ignored) {}
     }
 
