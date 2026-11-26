@@ -517,7 +517,7 @@
           + '.ayu-upd-dlg .ud-btns{display:flex;gap:8px;margin-top:6px}'
           + '.ayu-upd-dlg .ud-btns button{border-radius:10px;padding:6px 12px;font:inherit;font-size:.86rem;font-weight:800;cursor:pointer}'
           + '.ayu-upd-dlg .ud-later{flex:1;background:#fff;border:1.5px solid color-mix(in srgb,var(--footer-accent,#6f9a1c) 30%,#fff);color:var(--footer-accent,#6f9a1c)}'
-          + '.ayu-upd-dlg .ud-hint{margin-top:6px;font-size:.66rem;color:#475569;text-align:center;line-height:1.4}'
+          + '.ayu-upd-dlg .ud-hint{margin-top:8px;padding:6px 8px;border-radius:10px;background:color-mix(in srgb,var(--footer-accent,#6f9a1c) 9%,#fff);border:1px solid color-mix(in srgb,var(--footer-accent,#6f9a1c) 18%,#fff);font-size:.66rem;color:#475569;text-align:center;line-height:1.4}'
           + '.ayu-upd-dlg .ud-hint b{color:var(--footer-accent,#6f9a1c);font-weight:800}.ayu-upd-dlg .ud-hint svg{vertical-align:-2px}'
           + '.ayu-upd-dlg .ud-go{flex:2;border:0;background:var(--footer-accent,#6f9a1c);color:#fff}';
         document.head.appendChild(cs);
