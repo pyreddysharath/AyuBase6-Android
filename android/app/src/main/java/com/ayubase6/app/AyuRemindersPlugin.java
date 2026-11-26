@@ -261,7 +261,10 @@ public class AyuRemindersPlugin extends Plugin {
                 if (!ex.isEmpty()) {
                     android.app.ApplicationExitInfo e = ex.get(0);
                     String d = String.valueOf(e.getDescription()).toLowerCase(java.util.Locale.US);
-                    if (e.getReason() == android.app.ApplicationExitInfo.REASON_USER_REQUESTED && !d.contains("install") && !d.contains("updat") && !d.contains("replac"))
+                    long upd = 0;
+                    try { upd = c.getPackageManager().getPackageInfo(c.getPackageName(), 0).lastUpdateTime; } catch (Exception ignored) {}
+                    boolean byUpdate = upd > 0 && Math.abs(e.getTimestamp() - upd) < 10 * 60000L;   // the app was closed to install an update
+                    if (e.getReason() == android.app.ApplicationExitInfo.REASON_USER_REQUESTED && !byUpdate && !d.contains("install") && !d.contains("updat") && !d.contains("replac"))
                         r.put("forceStoppedAt", e.getTimestamp());
                 }
             }
