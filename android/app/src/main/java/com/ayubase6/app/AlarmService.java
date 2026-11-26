@@ -387,7 +387,6 @@ public class AlarmService extends Service {
             .setContentText(shownBody())
             .setStyle(new NotificationCompat.BigTextStyle().bigText(shownBody()))
             .setColor(NotificationArt.accentColor(this, theme()))   // not colorized: the card looks the same as the other notifications (section-coloured title, icon and Done)
-            .setLargeIcon(NotificationArt.alarm(theme()))   // an alarm clock in the section's colour
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
@@ -398,18 +397,30 @@ public class AlarmService extends Service {
         boolean routine = key.startsWith("routine-");
         boolean custom = false;
         try {   // Snooze / Stop drawn by the app as coloured pills (Android draws its own action buttons grey)
+            String ttl = ReminderScheduler.noTime(title);
+            int col = NotificationArt.titleColor(this, theme());
+            boolean snz = canSnooze();
+            // expanded / pop-up: title, time, full pills, and the alarm clock in the section's colour
             android.widget.RemoteViews v = new android.widget.RemoteViews(getPackageName(), R.layout.notif_alarm);
-            v.setTextViewText(R.id.na_title, ReminderScheduler.noTime(title));
-            v.setTextColor(R.id.na_title, NotificationArt.titleColor(this, theme()));
+            v.setTextViewText(R.id.na_title, ttl); v.setTextColor(R.id.na_title, col);
             v.setTextViewText(R.id.na_text, shownBody());
-            if (canSnooze()) { v.setTextViewText(R.id.na_snooze, "Snooze " + snoozeMin() + " min"); v.setOnClickPendingIntent(R.id.na_snooze, action("snooze", 7311)); }
+            v.setImageViewBitmap(R.id.na_icon, NotificationArt.alarm(theme()));
+            if (snz) { v.setTextViewText(R.id.na_snooze, "Snooze " + snoozeMin() + " min"); v.setOnClickPendingIntent(R.id.na_snooze, action("snooze", 7311)); }
             else v.setViewVisibility(R.id.na_snooze, android.view.View.GONE);
             v.setOnClickPendingIntent(R.id.na_stop, action("stop", 7312));
             if (routine) { v.setViewVisibility(R.id.na_done, android.view.View.VISIBLE); v.setOnClickPendingIntent(R.id.na_done, action("done", 7313)); }
-            b.setStyle(new NotificationCompat.DecoratedCustomViewStyle()).setCustomContentView(v).setCustomBigContentView(v).setCustomHeadsUpContentView(v);
+            // collapsed: one row, small Snooze / Stop on the right, no alarm clock
+            android.widget.RemoteViews sm = new android.widget.RemoteViews(getPackageName(), R.layout.notif_alarm_small);
+            sm.setTextViewText(R.id.nas_title, ttl); sm.setTextColor(R.id.nas_title, col);
+            sm.setTextViewText(R.id.nas_text, shownBody());
+            if (snz) sm.setOnClickPendingIntent(R.id.nas_snooze, action("snooze", 7311)); else sm.setViewVisibility(R.id.nas_snooze, android.view.View.GONE);
+            sm.setOnClickPendingIntent(R.id.nas_stop, action("stop", 7312));
+            if (routine) { sm.setViewVisibility(R.id.nas_done, android.view.View.VISIBLE); sm.setOnClickPendingIntent(R.id.nas_done, action("done", 7313)); }
+            b.setStyle(new NotificationCompat.DecoratedCustomViewStyle()).setCustomContentView(sm).setCustomBigContentView(v).setCustomHeadsUpContentView(v);
             custom = true;
         } catch (Exception e) { /* fall back to the standard buttons */ }
         if (!custom) {
+            b.setLargeIcon(NotificationArt.alarm(theme()));
             ReminderScheduler.sectionTitle(this, b, theme(), ReminderScheduler.noTime(title), shownBody());
             if (canSnooze()) b.addAction(0, "Snooze " + snoozeMin() + " min", action("snooze", 7311));
             b.addAction(0, "Stop", action("stop", 7312));

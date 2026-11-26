@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The ringing alarm, collapsed: title and time on the left, small Snooze / Stop (/ Done) pills on the right; no alarm icon here. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
+    <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:orientation="vertical">
+        <TextView android:id="@+id/nas_title" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:singleLine="true" android:ellipsize="end" android:textStyle="bold"
+            android:textAppearance="@style/TextAppearance.Compat.Notification.Title" />
+        <TextView android:id="@+id/nas_text" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:singleLine="true" android:ellipsize="end"
+            android:textAppearance="@style/TextAppearance.Compat.Notification" />
+    </LinearLayout>
+    <TextView android:id="@+id/nas_snooze" android:layout_width="wrap_content" android:layout_height="32dp"
+        android:gravity="center" android:paddingStart="12dp" android:paddingEnd="12dp" android:singleLine="true"
+        android:layout_marginStart="6dp" android:background="@drawable/alarm_btn_snooze" android:text="Snooze"
+        android:textColor="#2f4a0a" android:textStyle="bold" android:textSize="13sp" />
+    <TextView android:id="@+id/nas_done" android:layout_width="wrap_content" android:layout_height="32dp"
+        android:gravity="center" android:paddingStart="12dp" android:paddingEnd="12dp" android:singleLine="true"
+        android:layout_marginStart="6dp" android:background="@drawable/alarm_btn_snooze" android:visibility="gone"
+        android:text="✓" android:textColor="#2f4a0a" android:textStyle="bold" android:textSize="13sp" />
+    <TextView android:id="@+id/nas_stop" android:layout_width="wrap_content" android:layout_height="32dp"
+        android:gravity="center" android:paddingStart="14dp" android:paddingEnd="14dp" android:singleLine="true"
+        android:layout_marginStart="6dp" android:background="@drawable/alarm_btn_stop" android:text="Stop"
+        android:textColor="#ffffff" android:textStyle="bold" android:textSize="13sp" />
+</LinearLayout>
