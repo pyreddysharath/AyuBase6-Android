@@ -115,11 +115,17 @@ public class MainActivity extends BridgeActivity {
             content.setBackgroundColor(barColor);
             androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(content, (v, insets) -> {
                 androidx.core.graphics.Insets sb = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.statusBars() | androidx.core.view.WindowInsetsCompat.Type.displayCutout());
-                v.setPadding(0, sb.top, 0, 0);
+                // 3-button navigation: its buttons are drawn over the bottom of the page (the cookie "Accept" button was under them), so the page
+                // stops above them. With gesture navigation (a thin line) nothing is tappable there and the page stays full screen.
+                androidx.core.graphics.Insets tap = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.tappableElement());
+                int bar = Math.max(tap.bottom, 0);
+                v.setPadding(tap.left, sb.top, tap.right, bar);
                 // The page is told there is no top bar to avoid (the strip above it is already taken), so the top is the same from the first frame
-                return new androidx.core.view.WindowInsetsCompat.Builder(insets)
+                androidx.core.view.WindowInsetsCompat.Builder nb = new androidx.core.view.WindowInsetsCompat.Builder(insets)
                     .setInsets(androidx.core.view.WindowInsetsCompat.Type.statusBars(), androidx.core.graphics.Insets.NONE)
-                    .setInsets(androidx.core.view.WindowInsetsCompat.Type.displayCutout(), androidx.core.graphics.Insets.NONE).build();
+                    .setInsets(androidx.core.view.WindowInsetsCompat.Type.displayCutout(), androidx.core.graphics.Insets.NONE);
+                if (bar > 0) nb.setInsets(androidx.core.view.WindowInsetsCompat.Type.navigationBars(), androidx.core.graphics.Insets.NONE);   // taken here: the page must not add it again
+                return nb.build();
             });
             androidx.core.view.ViewCompat.requestApplyInsets(content);
         } catch (Throwable ignored) {}
