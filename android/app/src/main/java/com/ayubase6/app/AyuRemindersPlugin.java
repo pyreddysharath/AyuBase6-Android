@@ -210,6 +210,14 @@ public class AyuRemindersPlugin extends Plugin {
         android.content.Context c = getContext();
         JSObject r = new JSObject();
         try {
+            try {   // what Android itself holds as the next alarm (the one the status bar and lock screen show), and whose it is
+                android.app.AlarmManager alm = (android.app.AlarmManager) c.getSystemService(android.content.Context.ALARM_SERVICE);
+                android.app.AlarmManager.AlarmClockInfo ni = alm == null ? null : alm.getNextAlarmClock();
+                r.put("nextAlarmMs", ni == null ? 0 : ni.getTriggerTime());
+                String by = ni == null || ni.getShowIntent() == null ? "" : String.valueOf(ni.getShowIntent().getCreatorPackage());
+                r.put("nextAlarmBy", by);
+                r.put("nextAlarmOurs", by.equals(c.getPackageName()));
+            } catch (Exception ignored) {}
             android.media.AudioManager am = (android.media.AudioManager) c.getSystemService(android.content.Context.AUDIO_SERVICE);
             if (am != null) {
                 int m = am.getRingerMode();
