@@ -649,7 +649,7 @@
   function openTap(d){
     if(!ready){ pendingTap = d; return; }
     var key = String(d && d.key || ''), section = String(d && d.section || '');
-    if(/^alarm-[a-z]+$/.test(key) && typeof window.ayuShowAlarm === 'function'){ window.ayuShowAlarm(key.slice(6)); return; }   // the phone's next-alarm tap
+    if(/^alarm-[a-z]+$/.test(key) && typeof window.ayuShowAlarm === 'function'){ window.ayuShowAlarm(key.slice(6), true); return; }   // the phone's next-alarm tap
     if(section === 'clock'){
       try{ if(typeof switchTab === 'function') switchTab('alerts'); if(window.ayuRemTab) window.ayuRemTab('alarm'); if(window.ayuClockTab) window.ayuClockTab(/^(timer|stopwatch|world)$/.test(key) ? key : 'timer');
         setTimeout(function(){ var c = document.getElementById('rem-alarm-card'); if(c) c.scrollIntoView({ block:'start', behavior:'smooth' }); }, 200); }catch(e){}
