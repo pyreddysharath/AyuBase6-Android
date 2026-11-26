@@ -222,6 +222,7 @@ final class ReminderScheduler {
             long t = sn.optJSONObject(i) == null ? 0 : sn.optJSONObject(i).optLong("t");
             if (t > now && (next == 0 || t < next)) next = t;
         }
+        boolean ringNext = false;
         if (next > 0) {
             long ms = next * 60000L;
             PendingIntent pi = alarmIntent(c, next);
@@ -231,6 +232,7 @@ final class ReminderScheduler {
                 // and allowed to start ringing with the app closed); the alarm icon shows in the status bar.
                 String ringKey = ringKeyAt(c, rules, sn, next);
                 boolean rings = ringKey != null;
+                ringNext = rings;
                 if (canExact(c) && rings) {
                     // Tapping the time / next alarm on the phone opens this alarm in AyuBase6
                     String sec = "alarm-wake".equals(ringKey) ? "routines" : "alerts";
@@ -256,6 +258,9 @@ final class ReminderScheduler {
                 am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, ms, pi);
             }
         }
+        // The alarm that was set is gone before its time (deleted or turned off): record it, so Help does not call it a missed alarm
+        long loggedAt = prefs(c).getLong("loggedNext", 0);
+        if (!ringNext && loggedAt > System.currentTimeMillis()) { prefs(c).edit().putLong("loggedNext", 0).apply(); AlarmLog.add(c, "cleared:" + loggedAt); }
         try { upcoming(c, am, rules, now); } catch (Exception ignored) {}
         long nextMs = next * 60000L;
         prefs(c).edit().putLong(PREF_NEXT, nextMs).apply();
