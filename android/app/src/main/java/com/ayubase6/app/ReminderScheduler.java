@@ -225,6 +225,7 @@ final class ReminderScheduler {
         if (next > 0) {
             long ms = next * 60000L;
             PendingIntent pi = alarmIntent(c, next);
+            String tapTo = "none";   // what tapping the phone's time opens, kept in the alarm record for Help's check
             try {
                 // A ringing alarm is due: Android's alarm-clock alarm (on time even in deep sleep and battery saving,
                 // and allowed to start ringing with the app closed); the alarm icon shows in the status bar.
@@ -237,18 +238,19 @@ final class ReminderScheduler {
                         .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP)
                         .putExtra(EXTRA_KEY, ringKey).putExtra(EXTRA_SECTION, sec);
                     // Clock → Alarm "Tapping the phone's time opens: Phone's Clock": the phone's own Clock app (if it has one)
+                    tapTo = "app";
                     if (rules != null && "clock".equals(rules.optString("alarmTap"))) {
                         Intent clk = new Intent(android.provider.AlarmClock.ACTION_SHOW_ALARMS).setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                        if (clk.resolveActivity(c.getPackageManager()) != null) open = clk;
+                        if (clk.resolveActivity(c.getPackageManager()) != null) { open = clk; tapTo = "clock"; }
                     }
                     PendingIntent show = PendingIntent.getActivity(c, ALARM_REQUEST + 1, open, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
                     am.setAlarmClock(new AlarmManager.AlarmClockInfo(ms, show), pi);
                 }
                 else if (canExact(c)) am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, ms, pi);
                 else am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, ms, pi);
-                if (rings && prefs(c).getLong("loggedNext", 0) != ms) {   // once per alarm time
-                    prefs(c).edit().putLong("loggedNext", ms).apply();
-                    AlarmLog.add(c, "set:" + ms + ":" + (canExact(c) ? "clock" : "inexact"));
+                if (rings && (prefs(c).getLong("loggedNext", 0) != ms || !tapTo.equals(prefs(c).getString("loggedTap", "")))) {   // once per alarm time (and again when the time-tap choice changes)
+                    prefs(c).edit().putLong("loggedNext", ms).putString("loggedTap", tapTo).apply();
+                    AlarmLog.add(c, "set:" + ms + ":" + (canExact(c) ? "clock" : "inexact") + ":" + tapTo);
                 }
             } catch (SecurityException e) {
                 am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, ms, pi);
