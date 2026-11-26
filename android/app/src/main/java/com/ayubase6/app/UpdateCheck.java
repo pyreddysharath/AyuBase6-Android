@@ -39,8 +39,8 @@ public class UpdateCheck extends BroadcastReceiver {
     }
 
     /** The next check time (inexact: Android may move it a few minutes to save battery). */
-    /** The Google Play version is updated by Google Play: no checks of its own. */
-    static boolean selfUpdating() { return !"play".equals(BuildConfig.FLAVOR); }
+    /** No background update checks any more (people use "Check for update" or the pop-up when the app opens). schedule() now only cancels the alarm that older versions set. */
+    static boolean selfUpdating() { return false; }
 
     static void schedule(Context c) {
         AlarmManager am = (AlarmManager) c.getSystemService(Context.ALARM_SERVICE);
