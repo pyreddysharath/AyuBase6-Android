@@ -203,54 +203,85 @@ final class ReminderScheduler {
         return PendingIntent.getBroadcast(c, ALARM_REQUEST, i, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
     }
 
+    /** The phone's alarm-clock alarm for a ringing alarm (its own request code, so it does not replace the alarm for the next due reminder). */
+    private static PendingIntent ringIntent(Context c, long minute) {
+        Intent i = new Intent(c, AlarmReceiver.class).setAction("com.ayubase6.app.REMINDER");
+        i.putExtra(EXTRA_MINUTE, minute);
+        return PendingIntent.getBroadcast(c, ALARM_REQUEST + 3, i, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+    }
+
+    /** What tapping the phone's time / next alarm opens: this alarm in AyuBase6, or the phone's own Clock app. tapOut[0] = "app" or "clock". */
+    private static PendingIntent showIntent(Context c, JSONObject rules, String ringKey, String[] tapOut) {
+        String sec = "alarm-wake".equals(ringKey) ? "routines" : "alerts";
+        Intent open = new Intent(c, MainActivity.class)
+            .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            .putExtra(EXTRA_KEY, ringKey).putExtra(EXTRA_SECTION, sec);
+        // Clock → Alarm "Tapping the phone's time opens: Phone's Clock": the phone's own Clock app (if it has one)
+        tapOut[0] = "app";
+        if (rules != null && "clock".equals(rules.optString("alarmTap"))) {
+            Intent clk = new Intent(android.provider.AlarmClock.ACTION_SHOW_ALARMS).setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            if (clk.resolveActivity(c.getPackageManager()) != null) { open = clk; tapOut[0] = "clock"; }
+        }
+        return PendingIntent.getActivity(c, ALARM_REQUEST + 1, open, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+    }
+
     /** Sets the alarm for the next due minute after now. Returns its time in ms, or 0 when nothing is due. */
     static long reschedule(Context c) {
         AlarmManager am = (AlarmManager) c.getSystemService(Context.ALARM_SERVICE);
         if (am == null) return 0;
         am.cancel(alarmIntent(c, 0));
+        am.cancel(ringIntent(c, 0));
         JSONObject rules = loadRules(c);
-        long next = 0;
+        long next = 0, nextRing = 0;      // next = the next minute anything is due; nextRing = the next minute an alarm rings
+        String nextRingKey = null;
         long now = System.currentTimeMillis() / 60000L;
         if (rules != null) {
             for (long t = now + 1; t <= now + SEARCH_DAYS * 1440L; t++) {
-                if (!ReminderRules.due(rules, local(t), t).isEmpty()) { next = t; break; }
+                java.util.List<ReminderRules.Due> due = ReminderRules.due(rules, local(t), t);
+                if (due.isEmpty()) continue;
+                if (next == 0) next = t;
+                for (ReminderRules.Due d : due)
+                    if (nextRing == 0 && d.key.startsWith("alarm-") && AlarmService.config(c, d.key) != null) { nextRing = t; nextRingKey = d.key; }
+                if (nextRing != 0) break;
             }
         }
         // "Not yet" asks again later: the earliest of those, if it comes first
         org.json.JSONArray sn = snoozes(c);
         for (int i = 0; i < sn.length(); i++) {
-            long t = sn.optJSONObject(i) == null ? 0 : sn.optJSONObject(i).optLong("t");
+            JSONObject o = sn.optJSONObject(i);
+            long t = o == null ? 0 : o.optLong("t");
             if (t > now && (next == 0 || t < next)) next = t;
+            if (t > now && o.optBoolean("alarm", false) && (nextRing == 0 || t < nextRing)) { nextRing = t; nextRingKey = o.optString("key", "alarm-rem"); }
         }
+        long clockMs = 0; String clockTap = "none";   // the alarm-clock alarm Android shows (status bar, lock screen) and what tapping it opens
         if (next > 0) {
             long ms = next * 60000L;
             PendingIntent pi = alarmIntent(c, next);
-            String tapTo = "none";   // what tapping the phone's time opens, kept in the alarm record for Help's check
             try {
                 // A ringing alarm is due: Android's alarm-clock alarm (on time even in deep sleep and battery saving,
                 // and allowed to start ringing with the app closed); the alarm icon shows in the status bar.
                 String ringKey = ringKeyAt(c, rules, sn, next);
                 boolean rings = ringKey != null;
                 if (canExact(c) && rings) {
-                    // Tapping the time / next alarm on the phone opens this alarm in AyuBase6
-                    String sec = "alarm-wake".equals(ringKey) ? "routines" : "alerts";
-                    Intent open = new Intent(c, MainActivity.class)
-                        .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP)
-                        .putExtra(EXTRA_KEY, ringKey).putExtra(EXTRA_SECTION, sec);
-                    // Clock → Alarm "Tapping the phone's time opens: Phone's Clock": the phone's own Clock app (if it has one)
-                    tapTo = "app";
-                    if (rules != null && "clock".equals(rules.optString("alarmTap"))) {
-                        Intent clk = new Intent(android.provider.AlarmClock.ACTION_SHOW_ALARMS).setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                        if (clk.resolveActivity(c.getPackageManager()) != null) { open = clk; tapTo = "clock"; }
-                    }
-                    PendingIntent show = PendingIntent.getActivity(c, ALARM_REQUEST + 1, open, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+                    String[] tap = new String[1];
+                    PendingIntent show = showIntent(c, rules, ringKey, tap);
                     am.setAlarmClock(new AlarmManager.AlarmClockInfo(ms, show), pi);
+                    clockMs = ms; clockTap = tap[0];
                 }
                 else if (canExact(c)) am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, ms, pi);
                 else am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, ms, pi);
-                if (rings && (prefs(c).getLong("loggedNext", 0) != ms || !tapTo.equals(prefs(c).getString("loggedTap", "")))) {   // once per alarm time (and again when the time-tap choice changes)
-                    prefs(c).edit().putLong("loggedNext", ms).putString("loggedTap", tapTo).apply();
-                    AlarmLog.add(c, "set:" + ms + ":" + (canExact(c) ? "clock" : "inexact") + ":" + tapTo);
+                // Another reminder is due before the next alarm: the alarm still gets its own alarm-clock alarm,
+                // so the phone shows it (lock screen, status bar) and it rings on time
+                if (!rings && nextRing > 0 && nextRing != next && canExact(c)) {
+                    String[] tap = new String[1];
+                    PendingIntent show = showIntent(c, rules, nextRingKey, tap);
+                    long rms = nextRing * 60000L;
+                    am.setAlarmClock(new AlarmManager.AlarmClockInfo(rms, show), ringIntent(c, nextRing));
+                    clockMs = rms; clockTap = tap[0];
+                }
+                if (clockMs > 0 && (prefs(c).getLong("loggedNext", 0) != clockMs || !clockTap.equals(prefs(c).getString("loggedTap", "")))) {   // once per alarm time (and again when the time-tap choice changes)
+                    prefs(c).edit().putLong("loggedNext", clockMs).putString("loggedTap", clockTap).apply();
+                    AlarmLog.add(c, "set:" + clockMs + ":" + (canExact(c) ? "clock" : "inexact") + ":" + clockTap);
                 }
             } catch (SecurityException e) {
                 am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, ms, pi);
