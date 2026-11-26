@@ -726,11 +726,7 @@
     window.addEventListener('pagehide', function(){ sync(); });
     setInterval(sync, 5000);   // sends only when something changed
     setTimeout(function(){ ready = true; if(pendingTap){ var d = pendingTap; pendingTap = null; openTap(d); } }, 600);
-    setTimeout(checkUpdate, 200);   // an update shows as soon as the app opens
-    document.addEventListener('visibilitychange', function(){ if(!document.hidden) setTimeout(checkUpdate, 300); });
-    window.addEventListener('online', function(){ setTimeout(checkUpdate, 300); });
-    window.addEventListener('pageshow', function(){ setTimeout(checkUpdate, 500); });
-    window.addEventListener('focus', function(){ setTimeout(checkUpdate, 800); });
+    // no automatic update check any more: App Updates → Check for update is manual
   }
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once:true }); else start();
 })();
