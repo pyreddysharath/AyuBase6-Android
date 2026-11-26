@@ -517,7 +517,7 @@
           + '.ayu-upd-dlg .ud-btns{display:flex;gap:8px;margin-top:6px}'
           + '.ayu-upd-dlg .ud-btns button{border-radius:10px;padding:6px 12px;font:inherit;font-size:.86rem;font-weight:800;cursor:pointer}'
           + '.ayu-upd-dlg .ud-later{flex:1;background:#fff;border:1.5px solid color-mix(in srgb,var(--footer-accent,#6f9a1c) 30%,#fff);color:var(--footer-accent,#6f9a1c)}'
-          + '.ayu-upd-dlg .ud-hint{margin-top:6px;font-size:.68rem;white-space:nowrap;color:#475569;text-align:center}'
+          + '.ayu-upd-dlg .ud-hint{margin-top:6px;font-size:.66rem;color:#475569;text-align:center;line-height:1.4}'
           + '.ayu-upd-dlg .ud-hint b{color:var(--footer-accent,#6f9a1c);font-weight:800}.ayu-upd-dlg .ud-hint svg{vertical-align:-2px}'
           + '.ayu-upd-dlg .ud-go{flex:2;border:0;background:var(--footer-accent,#6f9a1c);color:#fff}';
         document.head.appendChild(cs);
@@ -539,7 +539,7 @@
       var b = document.createElement('div'); b.className = 'ayu-upd-banner ayu-upd-dlg'; b.id = 'ayu-update-card'; b.setAttribute('role', 'alertdialog'); b.setAttribute('aria-modal', 'true'); b.setAttribute('aria-label', 'Update available');
       b.innerHTML = '<div class="ud-card"><div class="ud-grab"></div><div class="ud-head"><div class="ud-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 11l5 5 5-5M5 20h14"/></svg></div><div><b class="ud-t">Update available</b>'
         + (state.selfInstall === false ? '<p class="ud-p">Download and install.</p>' : '') + '</div></div>'
-        + '<div class="ud-hint">Not now? Update later from the footer <b><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M19 12v7H5v-7H3v7c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7h-2zm-6 .67l2.59-2.58L17 11.5l-5 5-5-5 1.41-1.41L11 12.67V3h2v9.67z"/></svg> → App Updates</b></div>'
+        + '<div class="ud-hint">Not now? Update later from <b><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M19 12v7H5v-7H3v7c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7h-2zm-6 .67l2.59-2.58L17 11.5l-5 5-5-5 1.41-1.41L11 12.67V3h2v9.67z"/></svg> → App Updates</b></div>'
         + '<div class="ud-btns"><button type="button" class="ud-later ayu-ec-later">Later</button><button type="button" class="ud-go ayu-ec-allow">Download</button></div></div>';
       b.querySelector('.ayu-ec-allow').addEventListener('click', function(){
         gone(); state.updateStart();   // downloads right here; the person stays where they are
