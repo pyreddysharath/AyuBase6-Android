@@ -275,15 +275,6 @@ public class AyuRemindersPlugin extends Plugin {
         call.resolve(r);
     }
 
-    /** Background update checks: times a day (0 = off, 1–4), only between 9 AM and 9 PM. */
-    @PluginMethod
-    public void updateChecksGet(PluginCall call) { JSObject r = new JSObject(); r.put("times", UpdateCheck.times(getContext())); call.resolve(r); }
-    @PluginMethod
-    public void updateChecksSet(PluginCall call) {
-        UpdateCheck.setTimes(getContext(), call.getInt("times", 2));
-        JSObject r = new JSObject(); r.put("times", UpdateCheck.times(getContext())); call.resolve(r);
-    }
-
     @PluginMethod
     public void setRules(PluginCall call) {
         JSONObject rules = call.getObject("rules", null);

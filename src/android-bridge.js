@@ -405,21 +405,10 @@
     document.head.appendChild(st);
   }
 
-  // ── A new app version: the website's config/android-app.json names it. Update downloads it here and opens Android's
-  //    "Update this app?" screen. "Later" hides the banner for 3 days. Backup & Restore → App Updates shows the same. ──
-  var UPD_KEY = 'ayuAndroidUpdateLater', LATER_MS = 3 * 86400000;
+  // ── A new app version: the website's config/android-app.json names it. Backup & Restore → App Updates checks it when the person presses "Check for update" (there is no automatic check or pop-up). ──
+
   var upd = state.update = { mine:null, latest:null, checkedAt:0, error:'', phase:'', pct:0 };
   function updEvent(){ try{ window.dispatchEvent(new Event('ayu-update-info')); }catch(e){} }
-  function laterHidden(code){
-    var v = ls(UPD_KEY); if(!v) return false;
-    var o = null; try{ o = JSON.parse(v); }catch(e){}
-    if(!o || typeof o !== 'object'){ o = { v:String(v), at:Date.now() }; ls(UPD_KEY, JSON.stringify(o)); }   // older "Later": count from now
-    if(o.closed) return String(o.v) === String(code);   // × hides it for that version only; a newer version shows it once again
-    if(o.never) return false;   // older ×: hid every version; now counts as "not yet closed"
-    return String(o.v) === String(code) && Date.now() - (+o.at || 0) < LATER_MS;
-  }
-  state.updateChecksGet = function(){ return typeof P.updateChecksGet === 'function' ? P.updateChecksGet().then(function(r){ return +(r && r.times); }) : Promise.reject(); };
-  state.updateChecksSet = function(n){ return P.updateChecksSet({ times:+n }); };
   // Which version this is: "website" (updates itself from ayubase6.com) or "play" (Google Play updates it)
   var PLAY_URL = 'https://play.google.com/store/apps/details?id=com.ayubase6.app';
   // The screens carry the number of the app version they were packed in. If the app is newer than its screens,
@@ -517,41 +506,10 @@
           + '.ayu-upd-dlg .ud-btns{display:flex;gap:8px;margin-top:6px}'
           + '.ayu-upd-dlg .ud-btns button{border-radius:10px;padding:6px 12px;font:inherit;font-size:.86rem;font-weight:800;cursor:pointer}'
           + '.ayu-upd-dlg .ud-later{flex:1;background:#fff;border:1.5px solid color-mix(in srgb,var(--footer-accent,#6f9a1c) 30%,#fff);color:var(--footer-accent,#6f9a1c)}'
-          + '.ayu-upd-dlg .ud-hint{margin-top:8px;padding:8px 0 0;border-top:1px solid color-mix(in srgb,var(--footer-accent,#6f9a1c) 28%,#fff);font-size:clamp(.54rem,2.9vw,.66rem);color:#64748b;text-align:center;line-height:1.4;white-space:nowrap}'
-          + '.ayu-upd-dlg .ud-hint b{color:var(--footer-accent,#6f9a1c);font-weight:800}.ayu-upd-dlg .ud-hint svg{vertical-align:-2px}'
           + '.ayu-upd-dlg .ud-go{flex:2;border:0;background:var(--footer-accent,#6f9a1c);color:#fff}';
         document.head.appendChild(cs);
       }
   }
-  function checkUpdate(n){
-    n = +n || 0;   // called by timers and events too, which pass something else: counts the tries made after a failed check
-    if(!n){ var nw = Date.now(); if(nw - (state._chkAt || 0) < 3000) return; state._chkAt = nw; }   // several events at once (opening, focus, shown again): one check
-    storeP.then(function(s){ if(s !== 'play') return state.updateCheck(); }).then(function(){
-      if(state.store === 'play') return;
-      if(upd.error && n < 6){ setTimeout(function(){ checkUpdate(n + 1); }, [1500, 4000, 10000, 30000, 60000, 120000][n]); return; }   // right after the app starts the phone's network may not be ready: try again
-      var cfg = upd.latest; if(!cfg) return;
-      if(laterHidden(cfg.versionCode)) return;
-      if(document.querySelector('.ayu-upd-banner')) return;
-      // A pop-up in the middle of the screen, so it is seen wherever the person is on the page: what is new, Update, Later
-      var all = [];
-      function gone(){ all.forEach(function(b){ b.remove(); }); ls('ayuUpdAck', String(cfg.versionCode)); try{ if(window.ayuDotsEnforce) window.ayuDotsEnforce(); }catch(e){} }   // used: the dots for this update go
-      dlgCss();
-      var b = document.createElement('div'); b.className = 'ayu-upd-banner ayu-upd-dlg'; b.id = 'ayu-update-card'; b.setAttribute('role', 'alertdialog'); b.setAttribute('aria-modal', 'true'); b.setAttribute('aria-label', 'Update available');
-      b.innerHTML = '<div class="ud-card"><div class="ud-grab"></div><div class="ud-head"><div class="ud-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 11l5 5 5-5M5 20h14"/></svg></div><div><b class="ud-t">Update available</b>'
-        + (state.selfInstall === false ? '<p class="ud-p">Download and install.</p>' : '') + '</div></div>'
-        + '<div class="ud-hint">Not now? Update later from <b><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M19 12v7H5v-7H3v7c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7h-2zm-6 .67l2.59-2.58L17 11.5l-5 5-5-5 1.41-1.41L11 12.67V3h2v9.67z"/></svg> → App Updates</b></div>'
-        + '<div class="ud-btns"><button type="button" class="ud-later ayu-ec-later">Later</button><button type="button" class="ud-go ayu-ec-allow">Download</button></div></div>';
-      b.querySelector('.ayu-ec-allow').addEventListener('click', function(){
-        gone(); state.updateStart();   // downloads right here; the person stays where they are
-        if(state.selfInstall !== false && state.store !== 'play') noteSheet('Downloading the update. Android will ask to install when it is ready.', 6000);
-      });
-      b.querySelector('.ayu-ec-later').addEventListener('click', function(){
-        ls(UPD_KEY, JSON.stringify({ closed:true, v:String(cfg.versionCode), at:Date.now() })); gone();   // the hint is already in this pop-up: no second one
-      });
-      document.body.appendChild(b); all.push(b);
-    });
-  }
-
   // After an update Android may turn "full-screen alarms" off again (apps outside Google Play). If an alarm is set and it was on before
   // (or never asked): the same pop-up as "Update available", in the colour of the section. Allow opens Android's own switch.
   // "Later" is final; the warning on the Alarms page stays while it is off.
@@ -576,39 +534,6 @@
     }).catch(noop);
   }
   setTimeout(function(){ fsNotice(0); }, 1200);
-
-  // The same note, at the bottom where the update window was (same card, no dimming), closes by itself
-  function noteSheet(html, ms){
-    var old = document.getElementById('ayu-update-note'); if(old) old.remove();
-    var b = document.createElement('div'); b.className = 'ayu-upd-dlg ayu-upd-notesheet'; b.id = 'ayu-update-note'; b.setAttribute('role', 'status');
-    b.style.cssText = 'background:transparent;pointer-events:none';
-    b.innerHTML = '<div class="ud-card" style="pointer-events:auto"><div class="ud-grab"></div><div class="ud-head"><div class="ud-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 11l5 5 5-5M5 20h14"/></svg></div><div><p class="ud-p" style="font-size:.86rem;color:#1e293b">' + html + '</p></div></div>'
-      + '<div class="ud-btns"><button type="button" class="ud-go">OK</button></div></div>';
-    var done = false;
-    function end(){ if(done) return; done = true; b.remove(); }
-    b.querySelector('.ud-go').addEventListener('click', end);
-    document.body.appendChild(b);
-    setTimeout(end, ms || 10000);
-  }
-
-  // A short note as a banner at the top of each tab, in that tab's colour (the website's "Get the app" banner style), with ×
-  function noteBanner(html, ms){
-    document.querySelectorAll('.ayu-appb.ayu-upd-note').forEach(function(b){ b.remove(); });
-    var ACC = { activity:'#2563eb', nutrition:'#16a34a', calculator:'var(--calc-2)', alerts:'var(--alert-2)', routines:'var(--rout-2)', mind:'var(--mind-2)' };
-    var all = [];
-    document.querySelectorAll('.tab-panel').forEach(function(p){
-      var b = document.createElement('div'); b.className = 'ayu-appb appb-note ayu-upd-note'; b.setAttribute('role', 'status');
-      var tab = (p.id || '').replace(/-panel$/, ''); if(ACC[tab]) b.style.setProperty('--appb-c', ACC[tab]);
-      b.innerHTML = '<div class="appb-tx">' + html + '</div><button type="button" class="appb-x appb-note-x" aria-label="Close" title="Close">×</button>';
-      b.querySelector('.appb-note-x').addEventListener('click', end);
-      var ann = p.querySelector(':scope > .ayu-ann'); if(ann) ann.after(b); else p.insertBefore(b, p.firstChild);
-      all.push(b);
-    });
-    var done = false;
-    function end(){ if(done) return; done = true; all.forEach(function(b){ b.classList.add('out'); setTimeout(function(){ b.remove(); }, 400); }); }
-    setTimeout(end, ms || 10000);
-    try{ var vis = all.filter(function(b){ return b.offsetParent; })[0]; if(vis && vis.getBoundingClientRect().top < 0) vis.scrollIntoView({ block:'nearest', behavior:'smooth' }); }catch(e){}
-  }
 
   // ── Backup files: the web view cannot download the page's own files, so the phone saves them ──
   function toast(text, ms){
