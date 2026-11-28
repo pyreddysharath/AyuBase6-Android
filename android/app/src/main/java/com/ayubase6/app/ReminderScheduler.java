@@ -58,7 +58,7 @@ final class ReminderScheduler {
         try {
             JSONObject r = new JSONObject(s);
             JSONObject ck = r.optJSONObject("checks"), sh = wakeShift(c);   // a snoozed wake-up alarm moves today's checks
-            if (ck != null && sh != null) { ck.put("shiftDay", sh.optString("day")); ck.put("shiftMin", sh.optInt("min")); }
+            if (ck != null && sh != null && ck.optBoolean("follow", true)) { ck.put("shiftDay", sh.optString("day")); ck.put("shiftMin", sh.optInt("min")); }
             return r;
         } catch (Exception e) { return null; }
     }
