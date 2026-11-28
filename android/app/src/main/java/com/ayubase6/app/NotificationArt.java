@@ -12,7 +12,7 @@ import android.graphics.Shader;
 /**
  * Section colours and pictures for notifications, drawn the same way as the web app's nudgeArt():
  * a light section-coloured card with a large faint lotus, and a solid section-coloured logo with a white lotus.
- * Reminders = lime (Alerts), Care = sky blue, Mind = indigo; anything else (e.g. the Help test) uses the colour of the section it came from.
+ * Reminders = lime (Alerts), Care = sky blue, Mind = azure; anything else (e.g. the Help test) uses the colour of the section it came from.
  */
 final class NotificationArt {
     private NotificationArt() {}
@@ -30,7 +30,9 @@ final class NotificationArt {
     static final Theme REMINDERS = new Theme(c("#f8faf3"), c("#eaf2d5"), c("#bccf8f"), c("#7a9546"), c("#8ea85a"), c("#6f8a3a"));
     static final Theme ROUTINES = new Theme(c("#f2fafe"), c("#d8eff9"), c("#a6d9ee"), c("#41aad4"), c("#41aad4"), c("#3c85a2"));   // Care: sky blue
 
-    static final Theme MIND = new Theme(c("#eff0fb"), c("#dfe2f6"), c("#959cd0"), c("#4251bd"), c("#4251bd"), c("#36429b"));   // Mind: indigo
+    static final Theme MIND = new Theme(c("#eff6fb"), c("#dfecf6"), c("#7db2d9"), c("#2685c9"), c("#2685c9"), c("#1f6da5"));   // Mind: azure
+
+    static final Theme VITALS = new Theme(c("#f0f9f7"), c("#dcf0ec"), c("#7fcab9"), c("#13806c"), c("#1b836d"), c("#0f6a59"));   // Health (Vitals): teal, used by medicine reminders
 
     static final int[] LOGO_PETALS = {0xFF5aa6dc, 0xFF4c9be4, 0xFF4590c8, 0xFF86b84a, 0xFF8cbd4c};   // the logo: drop, left and right petal, two leaves
     static final Theme LOGO = new Theme(c("#ffffff"), c("#f1f7fc"), c("#b4d0ed"), c("#3982c3"), c("#ffffff"), c("#f1f7fc"));   // Test notification: white card, the logo in its own colours
@@ -40,6 +42,7 @@ final class NotificationArt {
     static Theme forKey(String section, String key) {
         if ("mind".equals(key)) return MIND;
         if ("test".equals(key)) return LOGO;
+        if (key != null && key.matches("^(preview[-:]|nudge-)*med[A-Za-z0-9]+$")) return VITALS;   // medicine lives under Health
         String bk = key == null ? "" : key.replaceFirst("^(preview[-:]|nudge-)+", "");   // a preview or scheduled key still means the same Health Break
         if (bk.matches("break|walk|drink|posture|stretch|breathe|eyeex|stand|break-ex")) return ROUTINES;
         return forSection(section);
