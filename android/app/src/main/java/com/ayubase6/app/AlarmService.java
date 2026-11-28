@@ -405,7 +405,7 @@ public class AlarmService extends Service {
             v.setTextViewText(R.id.na_title, ttl); v.setTextColor(R.id.na_title, col);
             v.setTextViewText(R.id.na_text, shownBody());
             v.setImageViewBitmap(R.id.na_icon, NotificationArt.alarm(theme()));
-            if (snz) { v.setTextViewText(R.id.na_snooze, "Snooze " + snoozeMin() + " min"); v.setOnClickPendingIntent(R.id.na_snooze, action("snooze", 7311)); }
+            if (snz) { v.setTextViewText(R.id.na_snooze, "Snooze"); v.setOnClickPendingIntent(R.id.na_snooze, action("snooze", 7311)); }
             else v.setViewVisibility(R.id.na_snooze, android.view.View.GONE);
             v.setOnClickPendingIntent(R.id.na_stop, action("stop", 7312));
             if (routine) { v.setViewVisibility(R.id.na_done, android.view.View.VISIBLE); v.setOnClickPendingIntent(R.id.na_done, action("done", 7313)); }
@@ -422,7 +422,7 @@ public class AlarmService extends Service {
         if (!custom) {
             b.setLargeIcon(NotificationArt.alarm(theme()));
             ReminderScheduler.sectionTitle(this, b, theme(), ReminderScheduler.noTime(title), shownBody());
-            if (canSnooze()) b.addAction(0, "Snooze " + snoozeMin() + " min", action("snooze", 7311));
+            if (canSnooze()) b.addAction(0, "Snooze", action("snooze", 7311));
             b.addAction(0, "Stop", action("stop", 7312));
             if (routine) b.addAction(0, ReminderScheduler.tinted(this, theme(), "✓ Done"), action("done", 7313));
         }

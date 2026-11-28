@@ -16,6 +16,9 @@ public class ActionReceiver extends BroadcastReceiver {
         if (ReminderScheduler.A_EYES_DONE.equals(intent.getAction())) {   // Eyes (20-20-20): the countdown is over
             ReminderScheduler.eyesFinished(app, tag, title, intent.getStringExtra(ReminderScheduler.EXTRA_SECTION)); return;
         }
+        if (ReminderScheduler.A_EYES_CLEAR.equals(intent.getAction())) {   // Eyes (20-20-20): the "done" message has been up for 2 seconds
+            if (tag != null) ReminderScheduler.cancel(app, tag); return;
+        }
         if (ReminderScheduler.A_UP_DISMISS.equals(action)) {   // "Dismiss" on the note before an alarm
             ReminderScheduler.dismissUpcoming(app, intent.getLongExtra(ReminderScheduler.EXTRA_RING_MS, 0)); return;
         }

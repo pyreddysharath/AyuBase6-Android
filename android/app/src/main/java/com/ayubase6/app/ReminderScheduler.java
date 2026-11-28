@@ -907,6 +907,20 @@ final class ReminderScheduler {
             if (!there) return;
             show(c, tag, title, "✓ 20 seconds done. Back to your screen.", true, NotificationArt.forKey(section, "break"), section, "break");
             chime(c);
+            eyesClearSoon(c, tag, title, section);
+        } catch (Exception ignored) {}
+    }
+    /** Two seconds after the "done" message the notification goes away by itself. */
+    static final String A_EYES_CLEAR = "com.ayubase6.app.EYES_CLEAR";
+    private static void eyesClearSoon(Context c, String tag, String title, String section) {
+        try {
+            AlarmManager am = (AlarmManager) c.getSystemService(Context.ALARM_SERVICE);
+            if (am == null) return;
+            Intent i = new Intent(c, ActionReceiver.class).setAction(A_EYES_CLEAR)
+                .putExtra(ActionReceiver.EXTRA_TAG, tag).putExtra(ActionReceiver.EXTRA_TITLE, title).putExtra(EXTRA_SECTION, section == null ? "" : section);
+            PendingIntent pi = PendingIntent.getBroadcast(c, 7051, i, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+            long at = System.currentTimeMillis() + 2000L;
+            if (canExact(c)) am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi); else am.set(AlarmManager.RTC_WAKEUP, at, pi);
         } catch (Exception ignored) {}
     }
     /** A short sound when the 20 seconds are over (follows the phone's sound mode: silent stays silent). */
