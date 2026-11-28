@@ -633,15 +633,18 @@ final class ReminderScheduler {
         try {
             JSONObject rr = loadRules(c); JSONObject rx = rr == null ? null : rr.optJSONObject("rx"); if (rx == null) return null;
             String k = key.replaceFirst("^(preview[-:]|nudge-)*med", "");
+            // the medicine's own photo (key = id + "d" + dose) wins over the prescription picture (key = id)
+            for (int pass = 0; pass < 2; pass++) {
             java.util.Iterator<String> it = rx.keys();
             while (it.hasNext()) {
                 String mid = it.next();
                 String clean = mid.replaceAll("[^A-Za-z0-9]", "");
-                if (k.startsWith(clean + "d")) {
+                if (pass == 0 ? k.equals(clean) : k.startsWith(clean + "d")) {
                     String d = rx.optString(mid, ""); int i = d.indexOf("base64,"); if (i < 0) return null;
                     byte[] raw = android.util.Base64.decode(d.substring(i + 7), android.util.Base64.DEFAULT);
                     return android.graphics.BitmapFactory.decodeByteArray(raw, 0, raw.length);
                 }
+            }
             }
         } catch (Throwable ignored) { }
         return null;
