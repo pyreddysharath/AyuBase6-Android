@@ -601,6 +601,13 @@ final class ReminderScheduler {
             } else sectionTitle(c, b, theme, checks ? noTime(title) : title, body);
         }
         if (!own && !pic && tag != null && tag.endsWith("test")) b.setLargeIcon((android.graphics.Bitmap) null);   // the test notification: no big logo, as in the newer notifications
+        // Medicine with a prescription attached: its small picture shows on the notification
+        if (tapKey != null && tapKey.matches("^(preview[-:]|nudge-)*med[A-Za-z0-9]+$")) {
+            try {
+                Bitmap rx = rxThumb(c, tapKey);
+                if (rx != null) b.setLargeIcon(rx);
+            } catch (Throwable ignored) { }
+        }
         for (java.util.Map.Entry<String, PendingIntent> e : acts.entrySet()) {
             if (own && (A_OFF_THIS.equals(e.getKey()) || A_EYES_START.equals(e.getKey()) || A_DONE.equals(e.getKey()) || A_NOT_YET.equals(e.getKey()))) continue;   // already in the app's own drawing
             b.addAction(new NotificationCompat.Action.Builder(0, tinted(c, theme, actionLabel(e.getKey())), e.getValue()).setAuthenticationRequired(false).build());   // works from the lock screen without unlocking
@@ -619,6 +626,25 @@ final class ReminderScheduler {
                 nm.notify(idFor(tag), b.build());
             } catch (Throwable ignored) { }
         }
+    }
+
+    /** The small prescription picture the app sent with the rules (rules.rx: medicine id → "data:image/jpeg;base64,…"). */
+    static Bitmap rxThumb(Context c, String key) {
+        try {
+            JSONObject rr = loadRules(c); JSONObject rx = rr == null ? null : rr.optJSONObject("rx"); if (rx == null) return null;
+            String k = key.replaceFirst("^(preview[-:]|nudge-)*med", "");
+            java.util.Iterator<String> it = rx.keys();
+            while (it.hasNext()) {
+                String mid = it.next();
+                String clean = mid.replaceAll("[^A-Za-z0-9]", "");
+                if (k.startsWith(clean + "d")) {
+                    String d = rx.optString(mid, ""); int i = d.indexOf("base64,"); if (i < 0) return null;
+                    byte[] raw = android.util.Base64.decode(d.substring(i + 7), android.util.Base64.DEFAULT);
+                    return android.graphics.BitmapFactory.decodeByteArray(raw, 0, raw.length);
+                }
+            }
+        } catch (Throwable ignored) { }
+        return null;
     }
 
     /** Title in the section colour (light shade in dark mode), text in the system colour: the app draws the notification text. */

@@ -195,8 +195,12 @@ final class ReminderRules {
                 isDue = hasInt(c.optJSONArray("times"), m);
             }
             boolean med = c.optBoolean("med", false);   // Medicine: its own key ("med…") so the notification gets Taken / Snooze / Skip
+            String refill = "";   // Medicine: seven days before the last day, a quiet note to refill
+            if (med && until.length() == 10) {
+                try { if (java.time.temporal.ChronoUnit.DAYS.between(java.time.LocalDate.parse(local.day), java.time.LocalDate.parse(until)) == 7) refill = "\nEnds in 7 days. Time to refill?"; } catch (Exception ignored) { }
+            }
             if (isDue) out.add(new Due((med ? "med" : "custom") + str(c.opt("id"), 12).replaceAll("[^A-Za-z0-9]", ""),
-                str(c.opt("name"), 80), str(c.opt("notes"), 1000).isEmpty() ? (med ? "Time for your medicine. Did you take it?" : "It is time for your reminder.") : str(c.opt("notes"), 1000), "alerts").vib(c));
+                str(c.opt("name"), 80), (str(c.opt("notes"), 1000).isEmpty() ? (med ? "Time for your medicine. Did you take it?" : "It is time for your reminder.") : str(c.opt("notes"), 1000)) + refill, "alerts").vib(c));
         }
         return out;
     }
